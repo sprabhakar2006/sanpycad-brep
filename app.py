@@ -33,7 +33,6 @@ To get the native window (recommended), install pywebview first:
 """
 
 import json
-import multiprocessing
 import os
 import sys
 import socket
@@ -43,49 +42,36 @@ import time
 import traceback
 import webbrowser
 
-# Where backend/, frontend/ and examples/ live. Running from source
-# that is simply this file's own folder. In a frozen (PyInstaller)
-# build they are copied into the bundle's resource folder instead,
-# which is not next to the executable -- see packaging/bundle_paths.py.
-if getattr(sys, "frozen", False):
-    BASE_DIR = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(sys.executable)))
-    sys.path.insert(0, os.path.join(BASE_DIR, "packaging"))
-else:
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+def _unblock_bundled_dlls():
+    """Windows stamps every file extracted from a downloaded zip with a
+    "this came from the internet" mark (an NTFS Zone.Identifier
+    alternate data stream). .NET Framework refuses to load an assembly
+    carrying that mark, which is what makes pywebview's winforms backend
+    (it loads bundled DLLs via pythonnet/.NET) fail with a cryptic
+    "Failed to resolve Python.Runtime.Loader.Initialize" RuntimeError on
+    a plain unzip-and-run -- nothing to do with this app's own code.
+    Removing the mark from every bundled DLL before webview is ever
+    imported avoids that entirely. No-op on macOS/Linux or when running
+    from source (only frozen Windows builds carry bundled DLLs)."""
+    if sys.platform != "win32" or not getattr(sys, "frozen", False):
+        return
+    base = getattr(sys, "_MEIPASS", os.path.dirname(sys.executable))
+    for root, _dirs, files in os.walk(base):
+        for name in files:
+            if name.lower().endswith(".dll"):
+                try:
+                    os.remove(os.path.join(root, name) + ":Zone.Identifier")
+                except OSError:
+                    pass  # no mark present, or the folder isn't writable
+
+
+_unblock_bundled_dlls()
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(BASE_DIR, "backend"))
 
-try:
-    import bundle_paths  # noqa: E402  (frozen builds only)
-except ImportError:
-    bundle_paths = None
-
-# Logging has to be wired up BEFORE `import server` below, not after.
-# server.py pulls in backend/brep.py, which pulls in build123d/OCP --
-# a large native (pybind11-wrapped OpenCASCADE) dependency that is far
-# more likely than anything else in this app to fail to import inside
-# a frozen bundle (a missing dylib, a bad rpath, an architecture
-# mismatch). A frozen, --windowed PyInstaller build has no terminal
-# attached and discards stdout/stderr by default, so without this, an
-# import-time crash here is completely silent: the Dock icon bounces
-# once and the process just vanishes, with no way for anyone -- user
-# or developer -- to ever see why. Starting the log redirect first
-# means that traceback lands in the per-user log file instead of
-# nowhere, exactly like every other error this app already logs.
-if bundle_paths is not None:
-    _log_path = bundle_paths.start_logging()
-    bundle_paths.redirect_writable_paths()
-    if _log_path:
-        print(f"[SanPyCAD Brep] logging this session to {_log_path}")
-
-try:
-    import server  # noqa: E402
-except Exception:
-    traceback.print_exc()
-    print("[SanPyCAD Brep] FATAL: could not import the geometry backend "
-          "(see traceback above). This usually means build123d/OCP failed "
-          "to load inside the bundle. The app cannot continue.")
-    sys.exit(1)
+import server  # noqa: E402
 
 
 # Where this process records "I'm the currently-running SanPyCAD Brep
@@ -94,11 +80,11 @@ except Exception:
 # (find_running_instance()), which reads this same fixed path to
 # decide whether "Send to SanPyCAD Brep" can reuse an already-open
 # window instead of always launching a brand-new one. A fixed path in
-# the OS temp dir -- rather than the per-user data folder bundle_paths
-# sets up for the frozen build's OTHER writable files -- because the
+# the OS temp dir (not a per-user data dir -- this app has no
+# bundle_paths.py-style writable-data-folder concept the way the main
+# SanPyCAD app does) rather than anything port-derived, since the
 # whole point is that SanPyCAD doesn't know the port yet -- that's
-# what it's about to read from here, and the OS temp dir needs no
-# frozen-vs-source distinction to find.
+# what it's about to read from here.
 INSTANCE_REGISTRY_PATH = os.path.join(tempfile.gettempdir(), "sanpycad_brep_instance.json")
 
 
@@ -380,9 +366,6 @@ def _pending_import_from_env():
 
 
 def main():
-    # Logging and the writable-path redirect are already set up at
-    # module level above (before `import server`), since that import
-    # itself needs to be covered -- see the comment there.
     server.print_backend_status()
 
     pending_import = _pending_import_from_env()
@@ -411,9 +394,36 @@ def main():
     wait_for_server(url)
     print(f"[SanPyCAD Brep] backend running at {url}")
 
+    def _fall_back_to_browser(reason):
+        """Shared fallback: the app server itself is fine either way, so a
+        pywebview failure is never fatal -- just less polished. Used both
+        when pywebview isn't installed at all, and when it's installed but
+        can't actually open a native window (e.g. on Windows, when the
+        .NET/WebView2 runtime pywebview's winforms backend depends on is
+        missing, blocked by antivirus, or otherwise broken on that
+        machine -- that shows up as a RuntimeError/clr_loader failure, not
+        an ImportError, which is why this is handled separately below)."""
+        print(reason)
+        webbrowser.open(url)
+        print("[SanPyCAD Brep] press Ctrl+C here to stop the app")
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            pass
+
     try:
         global webview
         import webview
+    except ImportError:
+        _fall_back_to_browser(
+            "[SanPyCAD Brep] pywebview not installed -- opening your default "
+            "browser instead. For a real app window, run: pip install pywebview"
+        )
+        httpd.shutdown()
+        return
+
+    try:
         api = Api()
         window = webview.create_window(
             "SanPyCAD Brep", url, width=1400, height=900, min_size=(900, 600),
@@ -429,30 +439,26 @@ def main():
         # normal use, so it's off unless explicitly asked for.
         debug_mode = bool(os.environ.get("SANPYCAD_DEBUG"))
         webview.start(debug=debug_mode)
-    except ImportError:
-        print("[SanPyCAD Brep] pywebview not installed -- opening your default "
-              "browser instead. For a real app window, run: pip install pywebview")
-        webbrowser.open(url)
-        print("[SanPyCAD Brep] press Ctrl+C here to stop the app")
-        try:
-            while True:
-                time.sleep(1)
-        except KeyboardInterrupt:
-            pass
+    except Exception as exc:
+        # pywebview IS installed here, but failed to actually open a
+        # native window -- on Windows this is almost always its winforms
+        # backend failing to load the .NET/CLR runtime it needs (missing
+        # or broken .NET Framework / WebView2 Runtime, or an antivirus
+        # that quarantined part of the bundled pythonnet DLL). Rather
+        # than crashing with a raw traceback, fall back to the browser so
+        # the app is still usable, and say what's likely wrong.
+        _fall_back_to_browser(
+            f"[SanPyCAD Brep] could not open the app window ({exc!r}) -- "
+            "opening your default browser instead. This usually means "
+            "Windows is missing (or has a broken) Microsoft Edge WebView2 "
+            "Runtime or .NET Framework install; installing/repairing "
+            "WebView2 from "
+            "https://developer.microsoft.com/microsoft-edge/webview2/ "
+            "and relaunching SanPyCAD Brep should restore the native window."
+        )
 
     httpd.shutdown()
 
 
 if __name__ == "__main__":
-    # Required for a frozen (PyInstaller) build: kernel_manager.py spawns
-    # the geometry worker via multiprocessing's 'spawn' start method (the
-    # macOS/Windows default), which re-launches this same executable with
-    # special bootstrap arguments to run just the worker function. Without
-    # freeze_support() called first -- before anything else in this guard
-    # -- a frozen child re-spawn falls through to main() instead, opening
-    # a whole new app window per worker rather than running the worker.
-    # Running from source (not frozen) this is a documented no-op, so it
-    # is safe to call unconditionally rather than gating it on
-    # bundle_paths/sys.frozen like the logging/path redirects above.
-    multiprocessing.freeze_support()
     main()
