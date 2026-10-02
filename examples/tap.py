@@ -1,0 +1,7 @@
+s1=prism(c1,path)
+p1=helix(7.5,2.01,20)
+s2=sweep_sec2path(sec1,p1,orientation=1,is_frenet=True)
+r1=difference(s1,s2)
+# show(color(s1, alpha=0.2))
+# show(color(s2, [1, 0, 0], alpha=0.8))
+show(r1)

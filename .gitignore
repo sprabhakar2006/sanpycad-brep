@@ -1,0 +1,8 @@
+dist/
+build/
+.build_venv/
+launch_debug.log
+__pycache__/
+*.pyc
+.DS_Store
+git_check_log.txt

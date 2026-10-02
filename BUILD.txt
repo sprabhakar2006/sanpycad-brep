@@ -1,0 +1,22 @@
+How to produce the downloadable app, in one command.
+
+  macOS        pip install build123d pyinstaller
+               python3 packaging/build_bundle.py
+               -> dist/SanPyCAD-Brep-mac.zip
+
+  Windows      pip install build123d numpy scipy sympy scikit-image pywebview pyperclip pyinstaller
+               python packaging\build_bundle.py
+               -> dist\SanPyCAD-Brep-win.zip
+
+Windows needs Python 3.10+ from python.org, with "Add Python to PATH"
+ticked during install. macOS: use the same Python that already runs
+SanPyCAD Brep from source.
+
+build123d pulls in OCP (the OpenCASCADE/OCCT Python bindings) as its
+own dependency -- a large native library, so this first pip install
+and the PyInstaller run itself both take noticeably longer than the
+sibling (mesh-based) SanPyCAD app's build. That's expected, not a
+sign something is wrong.
+
+Run the command on each machine, then upload both zips to the same
+GitHub release. That is the whole distribution process.
