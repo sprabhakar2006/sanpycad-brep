@@ -25,15 +25,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # macos-14 is Apple Silicon, macos-13 is Intel. A bundle built
-          # on Apple Silicon does not run on an Intel Mac, so both are
-          # built and shipped separately.
+          # macos-14 is Apple Silicon. Intel (macos-13) was dropped to
+          # reduce concurrent macOS runner demand on the free-tier
+          # account (capped at 5 concurrent macOS jobs total).
           - os: macos-14
             label: macOS (Apple Silicon)
             asset: SanPyCAD-Brep-mac-arm64.zip
-          - os: macos-13
-            label: macOS (Intel)
-            asset: SanPyCAD-Brep-mac-intel.zip
           - os: windows-latest
             label: Windows (x64)
             asset: SanPyCAD-Brep-win-x64.zip
