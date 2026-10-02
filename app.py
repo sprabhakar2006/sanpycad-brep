@@ -33,6 +33,7 @@ To get the native window (recommended), install pywebview first:
 """
 
 import json
+import multiprocessing
 import os
 import sys
 import socket
@@ -461,4 +462,19 @@ def main():
 
 
 if __name__ == "__main__":
+    # Required for any frozen (PyInstaller) Windows build that uses
+    # multiprocessing -- this app spawns its OCCT geometry kernel as a
+    # worker subprocess (see kernel_manager.py) for crash isolation.
+    # Windows has no fork(); multiprocessing's 'spawn' start method
+    # launches a worker by re-running this very .exe with special
+    # --multiprocessing-fork arguments. freeze_support() is what makes
+    # a frozen executable recognize those arguments and run just the
+    # worker payload instead of falling through to main() again. Without
+    # it, every worker spawn re-launches a full second copy of the app
+    # (a new window) -- and if that copy's own first render also spawns
+    # a worker, IT does the same thing, cascading into windows opening
+    # one after another with no end. A no-op on macOS/Linux (which fork
+    # instead) and when running from source (not frozen), so it's safe
+    # to always call unconditionally here.
+    multiprocessing.freeze_support()
     main()
