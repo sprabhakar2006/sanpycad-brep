@@ -22,82 +22,37 @@ you have to navigate to" -- under the hood it runs a small local backend
 (plain Python, no Flask) and a 3D viewer, but you just double-click a
 shortcut (or run one command) and a window opens.
 
-## Setup
+## Install
 
-This app's one hard dependency is `build123d` itself -- without it,
-every script fails with a clear `pip install build123d` error (the
-toolbar's status badge also tells you at a glance whether it's
-installed). `numpy` is needed too, for the viewer/export triangle math.
+Grab the build for your machine from the
+[latest release](../../releases/latest), unzip it, and open it. Each
+download carries its own Python and every library it needs, including
+`build123d` and its OCP/OpenCASCADE engine -- nothing to `pip install`,
+no Python required on the machine that runs it.
 
-```bash
-pip install numpy build123d
-```
+| Platform | Download | Open it |
+|---|---|---|
+| macOS (Apple Silicon) | `SanPyCAD-Brep-mac-arm64.zip` | double-click `SanPyCAD Brep.app` |
+| macOS (Intel) | `SanPyCAD-Brep-mac-intel.zip` | double-click `SanPyCAD Brep.app` |
+| Windows 10/11 (x64) | `SanPyCAD-Brep-win-x64.zip` | open the folder, double-click `SanPyCAD Brep.exe` |
 
-Optionally, for a real app window instead of a browser tab:
+**First launch on macOS** shows "SanPyCAD Brep cannot be opened because
+the developer cannot be verified" -- the app is not notarized by Apple.
+Right-click the app → **Open** → **Open**, once. Every launch after
+that is a normal double-click.
 
-```bash
-pip install pywebview
-```
+**First launch on Windows** may show a SmartScreen banner for the same
+reason: **More info** → **Run anyway**.
 
-(If you skip pywebview, the app still works -- it just opens in your
-default browser instead of its own window. Everything else is
-identical.)
-
-On Windows, pywebview's native-window mode needs the Microsoft Edge
-WebView2 Runtime -- already preinstalled on any normal, up-to-date
-Windows 10/11 machine, so this is usually a non-issue. On an older or
-stripped-down Windows image that's missing it, install it from
-[Microsoft's WebView2 page](https://developer.microsoft.com/microsoft-edge/webview2/)
-(or just skip it -- the app falls back to your default browser exactly
-as described above).
+Prefer to build and run it from source yourself? See
+[Building the bundle](#building-the-bundle) below, or just run
+`python3 app.py` after `pip install numpy build123d pywebview`.
 
 ## Run it
 
-**macOS: double-click `SanPyCAD Brep.app`** (in this same folder) -- no
-Terminal, no typing a command. If something goes wrong (e.g. Python
-isn't installed, build123d is missing, or the app crashes on startup),
-it shows an alert dialog rather than failing silently, and logs details
-to `SanPyCAD-Brep.log` in this folder.
-
-**First time only, if you downloaded/unzipped this folder:**
-double-click `Fix Mac Security Warning.command` once, *before* the
-first time you open `SanPyCAD Brep.app`. macOS flags every file from a
-downloaded zip as quarantined, and if an app still has that flag on its
-very first launch, Gatekeeper runs it from an isolated, read-only,
-randomly-named copy cut off from the rest of this folder ("App
-Translocation") -- SanPyCAD Brep.app looks for `app.py` right next to
-itself, so under that isolation it genuinely can't find it, even though
-nothing was actually moved. Running `Fix Mac Security Warning.command`
-once clears the flag so this never happens; SanPyCAD Brep.app itself
-now also detects this specific situation and tells you to run it if you
-hit it without having run it first. (macOS may still show its own
-"unidentified developer" warning the first time you run either file,
-since this app isn't Apple-notarized -- that's expected and safe to
-allow; right-click > Open bypasses it if double-clicking refuses.)
-
-**Windows: double-click `SanPyCAD Brep.vbs`** (in this same folder) --
-the equivalent of `SanPyCAD Brep.app`: no console window, no typing a
-command. It finds a Python 3 install that actually has
-`numpy`/`build123d` (checking several common install locations, not
-just whatever's first on PATH), and launches the app with no visible
-console (pywebview's own app window still opens normally). If something
-goes wrong, it shows a message box instead of a raw traceback, and logs
-details to `SanPyCAD-Brep.log` in this folder, same as the macOS
-version. If your machine's security policy blocks `.vbs` files from
-running (some locked-down/corporate Windows setups do, since VBScript
-has a history of malware abuse), **double-click
-`run_sanpycad_brep.bat`** instead -- same idea, just with a visible
-console window and without the pre-flight dependency check (if a
-package is missing, Python's own error prints directly into that
-window).
-
-If you'd rather run it from the command line (or you're on Linux, where
-neither of the above applies):
-
-```bash
-cd <this project folder>
-python3 app.py          # Windows: python app.py
-```
+Either way, a window titled "SanPyCAD Brep" opens: a code editor on the
+left, a live 3D viewport on the right. Write a script, press **Render**
+(or Ctrl/Cmd+Enter), and it draws the model.
 
 **Internet access:** SanPyCAD Brep's code editor and 3D viewer are
 built on CodeMirror and Three.js. The very first time you run the app,
