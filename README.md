@@ -33,7 +33,6 @@ no Python required on the machine that runs it.
 | Platform | Download | Open it |
 |---|---|---|
 | macOS (Apple Silicon) | `SanPyCAD-Brep-mac-arm64.zip` | double-click `SanPyCAD Brep.app` |
-| macOS (Intel) | `SanPyCAD-Brep-mac-intel.zip` | double-click `SanPyCAD Brep.app` |
 | Windows 10/11 (x64) | `SanPyCAD-Brep-win-x64.zip` | open the folder, double-click `SanPyCAD Brep.exe` |
 
 **First launch on macOS** shows "SanPyCAD Brep cannot be opened because
