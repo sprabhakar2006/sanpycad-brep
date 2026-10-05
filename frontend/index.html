@@ -423,7 +423,7 @@
        drag handler on #probe-panel-header further down, which switch
        it over to explicit left/top pixel coordinates once dragged. */
     position: fixed; top: 12px; right: 14px; width: 260px;
-    max-height: calc(100vh - 24px);
+    max-height: 50vh;
     background: rgba(30,31,38,0.92); color: var(--text); border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.25); font-size: 12px;
     display: none; flex-direction: column; overflow: hidden;
@@ -469,10 +469,10 @@
   }
   #probe-panel-resize-handle:hover { filter: brightness(1.6); }
   .probe-hint {
-    color: var(--muted); font-family: -apple-system, sans-serif; font-size: 11px;
-    line-height: 1.4; margin-bottom: 8px;
+    color: var(--muted); font-family: -apple-system, sans-serif; font-size: 10.5px;
+    line-height: 1.3; margin-bottom: 5px;
   }
-  .probe-field-row { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+  .probe-field-row { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
   #probe-var-lock-row { display: flex; align-items: center; gap: 3px; font-size: 11px; color: var(--muted); flex-shrink: 0; white-space: nowrap; cursor: pointer; }
   #probe-seam-loops { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
   .probe-seam-loop-row {
@@ -957,7 +957,7 @@
             <button id="probe-kind-edges" class="probe-kind-btn active" title="Click picks the nearest EDGE to where you click">Edges</button>
             <button id="probe-kind-faces" class="probe-kind-btn" title="Click picks the FACE you click on">Faces</button>
           </div>
-          <div id="probe-kind-hint" class="probe-hint">Click directly on an edge in the 3D view to add its real index to the list below (Render your script at least once first, so its shapes are in memory). Clicking picks up which script variable that shape belongs to automatically -- e.g. click something from sol1, then something from sol2, with no need to update the Var field yourself in between. The SAME list can hold edges from several different shapes at once -- handy for stitching edges from sol1 and sol2 together into a new surface (wire_from_edges()) -- Insert then writes one grouped line per shape automatically. Max fillet radius / Apply fillet only work on a list captured from a single shape, though, since fillet() rounds one shape's own edges at a time.</div>
+          <div id="probe-kind-hint" class="probe-hint" title="Click directly on an edge in the 3D view to add its real index to the list below (Render your script at least once first, so its shapes are in memory). Clicking picks up which script variable that shape belongs to automatically -- e.g. click something from sol1, then something from sol2, with no need to update the Var field yourself in between. The SAME list can hold edges from several different shapes at once -- handy for stitching edges from sol1 and sol2 together into a new surface (wire_from_edges()) -- Insert then writes one grouped line per shape automatically. Max fillet radius / Apply fillet only work on a list captured from a single shape, though, since fillet() rounds one shape's own edges at a time.">Click an edge in the 3D view to add it to the list (Render first). Hover here for more.</div>
           <label id="probe-loop-toggle-row" class="probe-hint" title="Instead of adding just the one edge you click, walks the connected chain of edges through it and adds ALL of them at once -- for grabbing a whole seam/loop in one click instead of clicking every segment individually. At each vertex, continues onto whichever touching edge turns the LEAST (closest to a straight line) as long as that turn is shallower than Angle tol -- stops at a genuine dead end, a real tie between two equally-straight options, or a turn sharper than Angle tol.">
             <input type="checkbox" id="probe-loop-toggle"> <span id="probe-loop-toggle-label">Select connected loop</span>
           </label>
@@ -982,9 +982,10 @@
             <button id="probe-manual-add" class="probe-field-btn" title="Add the typed index/indices to the current list">Add</button>
             <button id="probe-manual-remove" class="probe-field-btn" title="Remove the typed index/indices from the current list (a mis-pick doesn't need to be found and clicked on its own chip below)">Remove</button>
           </div>
-          <div id="probe-seam-row" class="probe-hint" title="Instead of clicking every edge along where two solids meet, this finds them all at once: every edge of the shape typed in Var above (normally a union/boolean result, e.g. s3 = union([s1, s2])) that lies on BOTH shapes below's own surfaces -- the genuine seam, not just leftover boundary from one side. Only works on Edges (not Faces), and Var must be a single shape name (uncheck Lock or narrow it to one name first).">
+          <details id="probe-seam-details">
+          <summary id="probe-seam-row" class="probe-hint" style="cursor:pointer;margin-bottom:4px" title="Instead of clicking every edge along where two solids meet, this finds them all at once: every edge of the shape typed in Var above (normally a union/boolean result, e.g. s3 = union([s1, s2])) that lies on BOTH shapes below's own surfaces -- the genuine seam, not just leftover boundary from one side. Only works on Edges (not Faces), and Var must be a single shape name (uncheck Lock or narrow it to one name first).">
             &#8646; Auto-pick seam between two shapes
-          </div>
+          </summary>
           <div class="probe-field-row">
             <span class="probe-field-label">A</span>
             <input id="probe-seam-a" class="probe-field" type="text" placeholder="e.g. s1" autocapitalize="off" autocorrect="off" spellcheck="false">
@@ -997,6 +998,7 @@
             <button id="probe-seam-find" class="probe-field-btn primary" title="Finds the seam between A and B on the shape in Var, split into its separate loops below -- nothing is added to the list until you pick a loop">Find seam</button>
           </div>
           <div id="probe-seam-loops"></div>
+          </details>
           <div id="probe-list-status" class="probe-hint"></div>
           <div id="probe-list-display">No edges captured yet.</div>
           <label id="probe-maxfillet-toggle-row" class="probe-hint" title="Max fillet radius runs a real binary-search fillet() attempt (up to 20 tries) against the model for EVERY captured edge, EVERY time the list changes -- accurate, but noticeably slower to update on bigger shapes. Off by default so picking edges stays snappy; switch on when you actually want the number.">
@@ -3795,8 +3797,11 @@ function clampProbePanelToViewport() {
   const availW = Math.max(200, window.innerWidth - 24);
   const availH = Math.max(160, window.innerHeight - 24);
   probePanel.style.width = Math.min(probePanelDesiredWidth, availW) + 'px';
+  // default: at most HALF the window height (body scrolls); the resize
+  // handle can still grow it further.
+  const halfH = Math.max(220, Math.round(window.innerHeight * 0.5));
   probePanel.style.maxHeight =
-    (probePanelDesiredMaxHeight === null ? availH : Math.min(probePanelDesiredMaxHeight, availH)) + 'px';
+    (probePanelDesiredMaxHeight === null ? Math.min(halfH, availH) : Math.min(probePanelDesiredMaxHeight, availH)) + 'px';
   if (probePanelPos) {
     const w = probePanel.getBoundingClientRect().width;
     probePanelPos = clampProbePanelPos(probePanelPos.left, probePanelPos.top, w);
@@ -3893,8 +3898,8 @@ function setProbeKind(kind) {
   probeKindEdgesBtn.classList.toggle('active', kind === 'edges');
   probeKindFacesBtn.classList.toggle('active', kind === 'faces');
   probeKindHint.textContent = kind === 'faces'
-    ? 'Click directly on a face in the 3D view to add its real index to the list below (Render your script at least once first, so its shapes are in memory).'
-    : 'Click directly on an edge in the 3D view to add its real index to the list below (Render your script at least once first, so its shapes are in memory).';
+    ? 'Click a face in the 3D view to add it to the list (Render first). Hover here for more.'
+    : 'Click an edge in the 3D view to add it to the list (Render first). Hover here for more.';
   // "Select connected loop"/"region" is meaningful in BOTH modes now --
   // edges walk a connected chain by shared endpoints, faces flood-fill
   // through shared edges whose two adjacent faces meet at a shallow
