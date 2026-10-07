@@ -44,6 +44,38 @@ import traceback
 import webbrowser
 
 
+def _hide_dock_icon():
+    """macOS only: stop THIS process from getting its own Dock icon.
+    A frozen .app re-launches its own executable for every
+    multiprocessing child (the OCCT kernel worker, the resource tracker),
+    and macOS gives each one a separate Dock icon -- the user saw three
+    "SanPyCAD Brep" icons where Windows shows one. Setting the process's
+    activation policy to "prohibited" (no Dock icon, no menu bar) keeps
+    just the real app window's icon. Pure ctypes (no pyobjc needed);
+    silently does nothing anywhere it doesn't apply or can't work."""
+    if sys.platform != "darwin":
+        return
+    try:
+        import ctypes
+        import ctypes.util
+        objc = ctypes.cdll.LoadLibrary(ctypes.util.find_library("objc"))
+        ctypes.cdll.LoadLibrary(ctypes.util.find_library("AppKit"))
+        objc.objc_getClass.restype = ctypes.c_void_p
+        objc.objc_getClass.argtypes = [ctypes.c_char_p]
+        objc.sel_registerName.restype = ctypes.c_void_p
+        objc.sel_registerName.argtypes = [ctypes.c_char_p]
+        send = objc.objc_msgSend
+        send.restype = ctypes.c_void_p
+        send.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        nsapp = send(objc.objc_getClass(b"NSApplication"),
+                     objc.sel_registerName(b"sharedApplication"))
+        send.restype = ctypes.c_bool
+        send.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_long]
+        send(nsapp, objc.sel_registerName(b"setActivationPolicy:"), 2)
+    except Exception:
+        pass
+
+
 def _unblock_bundled_dlls():
     """Windows stamps every file extracted from a downloaded zip with a
     "this came from the internet" mark (an NTFS Zone.Identifier
@@ -476,5 +508,10 @@ if __name__ == "__main__":
     # one after another with no end. A no-op on macOS/Linux (which fork
     # instead) and when running from source (not frozen), so it's safe
     # to always call unconditionally here.
+    # Any process started by multiprocessing (kernel worker, resource
+    # tracker) is not the real app -- keep it out of the macOS Dock.
+    if any(a.startswith("--multiprocessing") for a in sys.argv[1:]) or \
+            (len(sys.argv) > 1 and sys.argv[1] == "-c"):
+        _hide_dock_icon()
     multiprocessing.freeze_support()
     main()
