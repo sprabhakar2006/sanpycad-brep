@@ -9234,7 +9234,22 @@ let drawingLoaded = false;
 //                    change so drawingCustomViews/drawingSections stays
 //                    consistent with what's actually displayed
 //   'error'       -- request failed; sheet unchanged
-async function refreshDrawingData(forceFull = false) {
+// Drawing refreshes are SERIALISED: "Add View" clicked several times in a row (or
+// Add View followed by a Section / Reload) used to fire overlapping requests,
+// each built from whatever the view lists held at that instant, and each
+// response then patched the sheet in place -- so a slower, older response could
+// land after a newer one and remove the view the newer one had just added
+// (the "my view appears and then disappears after a few seconds" report).
+// Running them strictly one after another means every request is built from
+// the latest lists and no stale response can undo a newer one.
+let drawingRefreshChain = Promise.resolve();
+function refreshDrawingData(forceFull = false) {
+  const run = drawingRefreshChain.catch(() => {}).then(() => refreshDrawingDataNow(forceFull));
+  drawingRefreshChain = run;
+  return run;
+}
+
+async function refreshDrawingDataNow(forceFull = false) {
   setDrawingStatus('Loading drawing…');
   try {
     const code = cm.getValue();
@@ -9391,6 +9406,7 @@ async function captureCurrentViewForDrawing() {
   const entry = { name, direction: [dir.x, dir.y, dir.z], up: [up.x, up.y, up.z] };
   drawingCustomViews.push(entry);
   logLine(`Added "${name}" (current 3D orientation) to the Drawing tab.`, 'info');
+  renderViewsPanel();   // keep the Views panel's list in step even when it is already open
   // Only need to actually push this into the sheet if there's a sheet
   // to push it into -- if the Drawing tab has never been opened this
   // session, the NEXT openDrawingTab() will fetch everything fresh,
@@ -9400,7 +9416,12 @@ async function captureCurrentViewForDrawing() {
     if (result === 'cancelled') {
       drawingCustomViews = drawingCustomViews.filter((x) => x !== entry);
       logLine(`"${name}" was not added (cancelled).`, 'info');
+      renderViewsPanel();
+    } else if (result === 'error') {
+      logLine(`"${name}" is kept in the Views list but the sheet could not be refreshed -- click Reload in the Drawing tab to retry.`, 'warn');
     }
+  } else {
+    logLine(`"${name}" will appear on the sheet when you open the Drawing tab and click Reload.`, 'info');
   }
 }
 document.getElementById('btn-capture-view').addEventListener('click', captureCurrentViewForDrawing);
