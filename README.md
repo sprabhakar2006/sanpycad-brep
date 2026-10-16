@@ -110,7 +110,7 @@ The tutorials usually move a part between the two apps:
 | | **[SanPyCAD](https://github.com/sprabhakar2006/SanPyCAD)** | **SanPyCAD Brep** (this repo) |
 |---|---|---|
 | Geometry | triangle mesh, built from point lists | exact B-rep (analytic and NURBS surfaces) |
-| Engine | ocad library + OpenSCAD (Manifold) | build123d on OpenCASCADE |
+| Engine | ocad library + manifold3d | build123d on OpenCASCADE |
 | Strong at | freeform and organic shapes, sweeps, wraps, waves | mechanical parts, fillets and chamfers on picked edges, CAD-ready STEP |
 | Script style | Python or OpenSCAD-style | Python |
 
@@ -153,7 +153,7 @@ Measure distances and angles between vertices and edges, or use **Dimension** to
 
 ### Files
 - **Toolbar export:** STL, OBJ, DXF (tessellated), and SVG (a full engineering drawing).
-- **From a script:** `export_step()` / `export_brep()` write exact B-rep; `import_step()` / `import_brep()` read a file back in as a real solid you can cut, split and fillet.
+- **From a script:** `export_step()` / `export_brep()` write exact B-rep (wrap several shapes in `group(a, b, ...)` to write them as one assembly file); `import_step()` / `import_brep()` read a file back in as a real solid you can cut, split and fillet.
 - **Save:** scripts are plain `.py` text.
 
 ## Examples
@@ -177,7 +177,7 @@ For development, or on an Intel Mac or Linux:
 git clone https://github.com/sprabhakar2006/sanpycad-brep.git
 cd sanpycad-brep
 pip install numpy build123d ipython pywebview
-pip install scipy sympy scikit-image     # only needed for the ocad bridge (o.*)
+pip install scipy sympy scikit-image manifold3d     # only needed for the ocad bridge (o.*)
 python app.py
 ```
 
