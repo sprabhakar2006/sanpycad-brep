@@ -32,6 +32,7 @@
   });
 })();
 </script>
+<script>try{document.documentElement.setAttribute('data-theme', localStorage.getItem('sp-theme') || 'dark');}catch(e){document.documentElement.setAttribute('data-theme','dark');}</script>
 <style>
   :root {
     --panel-bg: #1e1f26;
@@ -45,7 +46,7 @@
     --border: #33353f;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; background: #f2f2f4; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  html, body { margin: 0; height: 100%; background: var(--panel-bg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   #app { display: flex; flex-direction: column; height: 100vh; }
 
   #topbar {
@@ -70,7 +71,7 @@
     border-radius: 6px; padding: 6px 12px; cursor: pointer; font-weight: 500;
   }
   button:hover { border-color: var(--accent); }
-  button.primary { background: var(--accent); color: #06232b; border-color: var(--accent); }
+  button.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
   button.primary:hover { filter: brightness(1.08); }
   button:disabled { opacity: 0.5; cursor: default; }
   select {
@@ -90,8 +91,8 @@
     width: 100%; text-align: left; border: none; border-radius: 4px;
     background: transparent; padding: 7px 10px; font-size: 12.5px; font-weight: 600;
   }
-  #export-menu-panel button:hover { background: var(--accent); color: #06232b; }
-  #export-menu-panel button:hover .export-sub { color: #06232b; }
+  #export-menu-panel button:hover { background: var(--accent); color: var(--on-accent); }
+  #export-menu-panel button:hover .export-sub { color: var(--on-accent); }
   #export-menu-panel .export-sub {
     font-size: 10.5px; font-weight: 400; color: var(--muted);
   }
@@ -107,7 +108,7 @@
     padding: 10px;
   }
   #display-settings-panel.open { display: block; }
-  #display-settings-btn.active { background: var(--accent); color: #06232b; border-color: var(--accent); }
+  #display-settings-btn.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
   #display-settings-panel .probe-field-label { width: 72px; }
   #display-settings-panel .probe-field-row:last-of-type { margin-bottom: 0; }
   #display-settings-panel .hint {
@@ -170,14 +171,14 @@
   #console-resizer:hover, #console-resizer.dragging { background: var(--accent); }
   #console-header {
     display: flex; align-items: center; justify-content: space-between;
-    background: #16171c; color: var(--muted); font-size: 11px;
+    background: var(--bg-0); color: var(--muted); font-size: 11px;
     padding: 4px 10px; border-top: 1px solid var(--border); flex-shrink: 0;
   }
   #console-header button {
     padding: 2px 8px; font-size: 11px; font-weight: 500;
   }
   #console {
-    height: 150px; overflow-y: auto; background: #16171c; color: var(--text);
+    height: 150px; overflow-y: auto; background: var(--bg-0); color: var(--text);
     font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 12px;
     padding: 4px 10px 8px; flex-shrink: 0; user-select: text;
     -webkit-user-select: text;
@@ -188,7 +189,7 @@
   #console .echo { color: var(--accent-2); }
   #console .info { color: var(--muted); }
 
-  #viewer-pane { flex: 1; position: relative; background: #eceef0; }
+  #viewer-pane { flex: 1; position: relative; background: var(--viewer-bg); }
   #viewer-pane canvas { display: block; }
 
   /* Interactive 2D Drawing tab -- sibling of #viewer-pane, swapped in/out
@@ -209,7 +210,7 @@
   #drawing-toolbar .sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 4px; }
   #drawing-toolbar .spacer { flex: 1; }
   #drawing-toolbar button { font-size: 12px; padding: 5px 10px; }
-  #drawing-toolbar button.tool-active { background: var(--accent); color: #06232b; border-color: var(--accent); }
+  #drawing-toolbar button.tool-active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
   #drawing-toolbar select { font-size: 12px; padding: 4px 6px; background: var(--panel-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; }
   #drawing-toolbar label { font-size: 12px; color: var(--text); display: flex; align-items: center; gap: 4px; white-space: nowrap; }
   #drawing-var {
@@ -324,7 +325,7 @@
     font-family: inherit; font-size: 11px;
   }
   #btn-add-section {
-    width: 100%; margin-top: 2px; background: var(--accent); color: #06232b;
+    width: 100%; margin-top: 2px; background: var(--accent); color: var(--on-accent);
     border: none; border-radius: 5px; font-weight: 600; cursor: pointer; padding: 6px; font-size: 11px;
   }
   #btn-add-section:hover { filter: brightness(1.08); }
@@ -347,7 +348,7 @@
   }
   #measure-panel {
     position: absolute; top: 12px; left: 12px; min-width: 190px; max-width: 300px;
-    background: rgba(30,31,38,0.92); color: var(--text); border-radius: 8px;
+    background: var(--float-bg); color: var(--text); border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.25); font-size: 12px;
     display: none; overflow: hidden;
   }
@@ -377,7 +378,7 @@
      inline in the CodeMirror gutter. */
   #vars-panel {
     position: absolute; top: 12px; right: 14px; min-width: 200px; max-width: 300px;
-    max-height: calc(100% - 60px); background: rgba(30,31,38,0.92); color: var(--text);
+    max-height: calc(100% - 60px); background: var(--float-bg); color: var(--text);
     border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.25); font-size: 12px;
     display: none; overflow: hidden; z-index: 5;
   }
@@ -401,7 +402,7 @@
     display: flex; align-items: center; justify-content: space-between; gap: 6px;
     padding: 3px 2px; border-radius: 4px;
   }
-  .vars-row:hover { background: rgba(255,255,255,0.09); }
+  .vars-row:hover { background: var(--hover); }
   .vars-row .vars-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .vars-row .vars-actions { display: flex; gap: 4px; align-items: center; flex: 0 0 auto; }
   .vars-row .vars-actions button {
@@ -424,7 +425,7 @@
        it over to explicit left/top pixel coordinates once dragged. */
     position: fixed; top: 12px; right: 14px; width: 260px;
     max-height: 50vh;
-    background: rgba(30,31,38,0.92); color: var(--text); border-radius: 8px;
+    background: var(--float-bg); color: var(--text); border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.25); font-size: 12px;
     display: none; flex-direction: column; overflow: hidden;
     z-index: 50;
@@ -438,7 +439,7 @@
        it tracks the raw mouse position regardless of which pane/layout
        is under it. display:none by default; JS toggles it per-frame. */
     position: fixed; display: none; z-index: 60; pointer-events: none;
-    background: rgba(30,31,38,0.92); color: var(--text); border-radius: 5px;
+    background: var(--float-bg); color: var(--text); border-radius: 5px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.3); font-size: 11.5px;
     padding: 3px 7px; white-space: nowrap;
   }
@@ -490,7 +491,7 @@
   }
   .probe-field-btn {
     flex-shrink: 0; font-size: 11px; padding: 3px 8px; font-family: inherit;
-    background: var(--accent); color: #06232b; border: none; border-radius: 4px;
+    background: var(--accent); color: var(--on-accent); border: none; border-radius: 4px;
     cursor: pointer; font-weight: 600;
   }
   .probe-field-btn:hover { filter: brightness(1.08); }
@@ -502,10 +503,10 @@
     border-radius: 5px; cursor: pointer;
   }
   .probe-kind-btn:hover { border-color: var(--accent); }
-  .probe-kind-btn.active { background: var(--accent); color: #06232b; border-color: var(--accent); font-weight: 600; }
+  .probe-kind-btn.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
   #btn-dim3d.active { background: #ff9800; color: #2b1600; border-color: #ff9800; }
   #btn-sketch-face.active { background: #ff9800; color: #2b1600; border-color: #ff9800; }
-  #btn-vars.active { background: var(--accent); color: #06232b; border-color: var(--accent); }
+  #btn-vars.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
   /* Persistent 3D dimensioning panel -- `position: fixed` + freely
      draggable/resizable, same reasoning (and the same drag/resize JS
      pattern, just under dim3d*() names) as #probe-panel above: anchored
@@ -519,7 +520,7 @@
   #dim3d-panel {
     position: fixed; bottom: 12px; left: 12px; width: 240px;
     max-height: calc(100vh - 24px);
-    background: rgba(30,31,38,0.92); color: var(--text); border-radius: 8px;
+    background: var(--float-bg); color: var(--text); border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.25); font-size: 12px;
     display: none; flex-direction: column; overflow: hidden;
     z-index: 50;
@@ -546,7 +547,7 @@
     border-radius: 5px; cursor: pointer;
   }
   .dim3d-tool-btn:hover { border-color: var(--accent); }
-  .dim3d-tool-btn.active { background: var(--accent); color: #06232b; border-color: var(--accent); font-weight: 600; }
+  .dim3d-tool-btn.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
   .dim3d-field-row { display: flex; align-items: center; gap: 4px; padding: 8px 10px 0; }
   .dim3d-field-label { width: 28px; color: var(--muted); font-size: 11px; flex-shrink: 0; }
   .dim3d-field {
@@ -622,14 +623,14 @@
   }
   #probe-list-clear:hover { border-color: var(--accent); }
   #probe-list-insert {
-    background: var(--accent); color: #06232b; border: none; border-radius: 5px;
+    background: var(--accent); color: var(--on-accent); border: none; border-radius: 5px;
     font-weight: 600; cursor: pointer;
   }
   #probe-list-insert:hover { filter: brightness(1.08); }
   /* match the dark editor theme instead of show-hint's default light popup */
   .CodeMirror-hints { background: #262832; border: 1px solid #33353f; color: #e8e8ec; font-family: "SF Mono", Menlo, Consolas, monospace; }
   .CodeMirror-hint { color: #e8e8ec; }
-  li.CodeMirror-hint-active { background: #4fc3f7; color: #06232b; }
+  li.CodeMirror-hint-active { background: #4fc3f7; color: var(--on-accent); }
 
   /* Find/Replace dialog (Ctrl/Cmd+F) -- match the dark editor theme instead
      of the addon's default light bar; this is CodeMirror's own dialog addon
@@ -816,43 +817,172 @@
   #sketch2d-header .hint { flex: 1; font-size: 12px; color: var(--muted); }
   #sketch2d-close { padding: 4px 10px; font-size: 15px; line-height: 1; }
   #sketch2d-frame { flex: 1; width: 100%; border: 0; background: #fff; }
+
+/* ===== SanPyCAD pro theme (dark default, light via [data-theme="light"]) ===== */
+:root {
+  --bg-0:#14161a; --panel-bg:#1b1e24; --panel-bg-2:#242830; --border:#313640;
+  --text:#e6e8ec; --muted:#8e95a3; --accent:#4c9aff; --accent-2:#5fc48a;
+  --on-accent:#0b1b33; --danger:#ff6b6b; --warn:#f2b84b;
+  --float-bg:rgba(27,30,36,0.95); --float-hdr:rgba(255,255,255,0.05); --float-line:rgba(255,255,255,0.09);
+  --hover:rgba(255,255,255,0.07); --viewer-bg:#242830; --chip-bg:rgba(255,255,255,0.06);
+  --shadow:0 6px 20px rgba(0,0,0,0.45); --hint-bg:rgba(20,22,26,0.72); --hint-fg:#9aa1ae;
+}
+[data-theme="light"] {
+  --bg-0:#f3f4f7; --panel-bg:#f7f8fa; --panel-bg-2:#ffffff; --border:#d6dae2;
+  --text:#1d2330; --muted:#677084; --accent:#1f6feb; --accent-2:#1a8a4f;
+  --on-accent:#ffffff; --danger:#d1344b; --warn:#b7791f;
+  --float-bg:rgba(255,255,255,0.97); --float-hdr:rgba(20,30,60,0.045); --float-line:rgba(20,30,60,0.10);
+  --hover:rgba(20,30,60,0.06); --viewer-bg:#eceef0; --chip-bg:rgba(20,30,60,0.05);
+  --shadow:0 6px 20px rgba(20,30,60,0.18); --hint-bg:rgba(255,255,255,0.8); --hint-fg:#6b7280;
+}
+html, body { background: var(--panel-bg); font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+body { color: var(--text); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); background-clip: content-box; border: 2px solid transparent; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+
+/* toolbars */
+#topbar, #toolbar2 { display:flex; align-items:center; gap:6px; flex-wrap:wrap; row-gap:4px; background:var(--panel-bg); color:var(--text); flex-shrink:0; }
+#topbar { padding:6px 12px 4px; border-bottom:none; }
+#toolbar2 { padding:4px 12px 6px; border-bottom:1px solid var(--border); }
+#topbar > *, #toolbar2 > * { flex-shrink:0; }
+#topbar .title { display:flex; align-items:center; gap:7px; font-weight:700; font-size:14px; letter-spacing:.2px; color:var(--text); margin-right:6px; }
+#topbar .title .ic { color:var(--accent); width:19px; height:19px; stroke-width:1.8; }
+.tb-group { display:flex; align-items:center; gap:3px; }
+.tb-sep { width:1px; height:20px; background:var(--border); margin:0 6px; flex-shrink:0; }
+#topbar .spacer { flex:1; min-width:8px; }
+.ic { width:15px; height:15px; flex-shrink:0; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+.ic.caret { width:11px; height:11px; margin-left:-1px; opacity:.7; }
+button { display:inline-flex; align-items:center; gap:6px; background:transparent; color:var(--text); border:1px solid transparent; border-radius:6px; padding:5px 9px; font-size:12.5px; font-weight:500; cursor:pointer; transition:background .12s, border-color .12s, color .12s; white-space:nowrap; font-family:inherit; }
+button:hover { background:var(--hover); border-color:transparent; }
+button:active { background:var(--chip-bg); }
+button.primary { background:var(--accent); color:var(--on-accent); border-color:var(--accent); font-weight:600; padding:5px 13px; box-shadow:0 1px 2px rgba(0,0,0,.25); }
+button.primary:hover { background:var(--accent); filter:brightness(1.1); }
+button.icon-only { padding:6px; }
+#btn-replace-all .lbl { display:none; }
+#btn-theme .i-moon { display:none; } [data-theme="light"] #btn-theme .i-sun { display:none; } [data-theme="light"] #btn-theme .i-moon { display:inline; }
+select { background:var(--panel-bg-2); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:4px 24px 4px 8px; font-size:12.5px; font-family:inherit; }
+select:hover { border-color:var(--muted); }
+select:focus, input:focus, button:focus-visible { outline:2px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset:1px; }
+input[type=checkbox] { accent-color:var(--accent); }
+.chk { display:inline-flex !important; align-items:center; gap:5px !important; padding:3px 8px; border-radius:6px; font-size:12px !important; color:var(--text) !important; cursor:pointer; }
+.chk:hover { background:var(--hover); }
+.badge { font-size:11px; padding:2px 9px; border-radius:999px; background:var(--chip-bg); color:var(--muted); border:1px solid var(--border); }
+#mode-badge { color:var(--accent); border-color:color-mix(in srgb, var(--accent) 40%, transparent); background:color-mix(in srgb, var(--accent) 10%, transparent); font-weight:600; }
+#btn-dim3d:not(.active) ~ select { display:none; }
+#btn-dim3d.active, #btn-sketch-face.active, #btn-vars.active { background:var(--accent) !important; color:var(--on-accent) !important; border-color:var(--accent) !important; }
+#settings-btn { padding:6px; }
+#settings-panel, #export-menu-panel { background:var(--panel-bg-2); border:1px solid var(--border); box-shadow:var(--shadow); border-radius:10px; }
+#export-menu-panel button { color:var(--text); }
+#export-menu-panel button:hover { background:var(--accent); color:var(--on-accent); }
+#export-menu-panel button:hover .export-sub { color:var(--on-accent); opacity:.85; }
+.mode-btn { color:var(--muted) !important; } .mode-btn.active { background:var(--accent) !important; color:var(--on-accent) !important; }
+#mode-toggle { background:var(--panel-bg); }
+
+/* panes */
+#main { background:var(--bg-0); }
+#editor-pane { background:var(--panel-bg); }
+#pane-resizer, #console-resizer { background:var(--border); }
+#console-header { background:var(--panel-bg); color:var(--muted); font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; border-top:1px solid var(--border); }
+#console-header button { text-transform:none; letter-spacing:0; }
+#console { background:var(--bg-0); color:var(--text); font-size:12px; line-height:1.5; }
+#viewer-pane { background:var(--viewer-bg); }
+#viewer-hint { background:var(--hint-bg); color:var(--hint-fg); border-radius:6px; }
+#render-spinner { background:var(--float-bg); color:var(--text); box-shadow:var(--shadow); }
+#vars-panel, #measure-panel, #dim3d-panel, #guifn-panel { background:var(--float-bg) !important; color:var(--text); border:1px solid var(--float-line); border-radius:10px !important; box-shadow:var(--shadow) !important; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
+#vars-panel-header, #measure-panel-header, #dim3d-panel-header, #guifn-panel-header { background:var(--float-hdr) !important; border-bottom:1px solid var(--float-line) !important; }
+#vars-panel-title, #measure-panel-title, #dim3d-panel-title, #guifn-panel-title { color:var(--text) !important; font-weight:600; letter-spacing:.2px; }
+#vars-panel-header button, #measure-panel-header button, #dim3d-panel-header button, #guifn-panel-header button { background:transparent; border:1px solid var(--float-line); color:var(--text); }
+#guifn-panel-body select, #guifn-panel-body input[type="text"], #guifn-panel-body input[type="number"] { background:var(--panel-bg-2); color:var(--text); border:1px solid var(--border); }
+#guifn-panel-body button#guifn-run { background:var(--accent); color:var(--on-accent); }
+.vars-row:hover { background:var(--hover) !important; }
+.CodeMirror .var-preview-inline { background:var(--chip-bg); border-color:var(--border); }
+
+/* status bar */
+#statusbar { display:flex; align-items:center; gap:10px; padding:3px 12px; background:var(--panel-bg); border-top:1px solid var(--border); font-size:11.5px; color:var(--muted); flex-shrink:0; }
+#statusbar .spacer { flex:1; }
+#statusbar label { display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--muted); }
+#statusbar button { padding:2px 8px; font-size:11.5px; color:var(--muted); }
+#statusbar button:hover { color:var(--text); }
+
+/* responsive: icon-only labels on narrow windows */
+@media (max-width:1560px) { #topbar .g-edit .lbl, #topbar .g-mode + .tb-sep { display:none; } }
+@media (max-width:1380px) { #topbar .g-file .lbl { display:none; } #topbar .g-file button { padding:6px; } #topbar .g-file #export-menu-btn { padding:6px 8px; } }
+
+/* CodeMirror themes */
+.CodeMirror { font-family:"JetBrains Mono","SF Mono",Menlo,Consolas,monospace; font-size:13px; line-height:1.55; }
+.cm-s-sp-dark.CodeMirror { background:var(--panel-bg); color:#d4d8e0; }
+.cm-s-sp-dark .CodeMirror-gutters { background:var(--panel-bg); border-right:1px solid var(--border); }
+.cm-s-sp-dark .CodeMirror-linenumber { color:#5b6270; }
+.cm-s-sp-dark .CodeMirror-cursor { border-left:2px solid #e6e8ec; }
+.cm-s-sp-dark .CodeMirror-activeline-background, .cm-s-sp-dark .CodeMirror-focused .CodeMirror-activeline-background { background:rgba(255,255,255,0.035); }
+.cm-s-sp-dark div.CodeMirror-selected, .cm-s-sp-dark .CodeMirror-focused .CodeMirror-selected { background:rgba(76,154,255,0.28); }
+.cm-s-sp-dark .cm-keyword { color:#c792ea; } .cm-s-sp-dark .cm-def { color:#82aaff; } .cm-s-sp-dark .cm-builtin { color:#7fdbca; }
+.cm-s-sp-dark .cm-number { color:#f78c6c; } .cm-s-sp-dark .cm-string, .cm-s-sp-dark .cm-string-2 { color:#c3e88d; }
+.cm-s-sp-dark .cm-comment { color:#6b7385; font-style:italic; } .cm-s-sp-dark .cm-variable { color:#d4d8e0; } .cm-s-sp-dark .cm-variable-2 { color:#9fd0ff; }
+.cm-s-sp-dark .cm-operator { color:#89ddff; } .cm-s-sp-dark .cm-meta { color:#ffcb6b; } .cm-s-sp-dark .cm-atom { color:#f78c6c; } .cm-s-sp-dark .cm-property { color:#82aaff; }
+.cm-s-sp-dark .CodeMirror-matchingbracket { color:#fff !important; background:rgba(76,154,255,0.35); }
+.cm-s-sp-light.CodeMirror { background:#ffffff; color:#24292f; }
+.cm-s-sp-light .CodeMirror-gutters { background:#f7f8fa; border-right:1px solid var(--border); }
+.cm-s-sp-light .CodeMirror-linenumber { color:#9aa1ad; }
+.cm-s-sp-light .CodeMirror-cursor { border-left:2px solid #1d2330; }
+.cm-s-sp-light .CodeMirror-activeline-background { background:rgba(20,30,60,0.04); }
+.cm-s-sp-light div.CodeMirror-selected, .cm-s-sp-light .CodeMirror-focused .CodeMirror-selected { background:rgba(31,111,235,0.2); }
+.cm-s-sp-light .cm-keyword { color:#8250df; } .cm-s-sp-light .cm-def { color:#0550ae; } .cm-s-sp-light .cm-builtin { color:#0a7d6f; }
+.cm-s-sp-light .cm-number { color:#b35900; } .cm-s-sp-light .cm-string, .cm-s-sp-light .cm-string-2 { color:#1a7f37; }
+.cm-s-sp-light .cm-comment { color:#8a919c; font-style:italic; } .cm-s-sp-light .cm-variable { color:#24292f; } .cm-s-sp-light .cm-variable-2 { color:#0969da; }
+.cm-s-sp-light .cm-operator { color:#0969da; } .cm-s-sp-light .cm-meta { color:#9a6700; } .cm-s-sp-light .cm-atom { color:#b35900; } .cm-s-sp-light .cm-property { color:#0550ae; }
+.cm-s-sp-light .CodeMirror-matchingbracket { color:#000 !important; background:rgba(31,111,235,0.22); }
+.CodeMirror-hints { background:var(--panel-bg-2); border:1px solid var(--border); box-shadow:var(--shadow); border-radius:8px; }
+.CodeMirror-hint { color:var(--text); } li.CodeMirror-hint-active { background:var(--accent); color:var(--on-accent); }
+
+#viewbar { position:absolute; top:10px; left:12px; display:flex; align-items:center; gap:1px; padding:3px; background:var(--float-bg); border:1px solid var(--float-line); border-radius:10px; box-shadow:var(--shadow); z-index:6; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); }
+#viewbar .vb-sep { width:1px; height:20px; background:var(--float-line); margin:0 4px; }
+#viewbar button { padding:3px; border-radius:7px; color:var(--text); }
+#viewbar button .ic.cube { width:24px; height:25px; stroke-width:1.5; }
+#viewbar button.vb-active { background:color-mix(in srgb, var(--accent) 22%, transparent); color:var(--accent); box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent); }
+#viewbar #btn-fit-view { padding:5px 7px; }
+#view-preset { display:none !important; }
+#render-spinner, #dim3d-panel, #guifn-panel, #measure-panel { top:64px; }
+#dim3d-panel, #guifn-panel { max-height: calc(100% - 150px); }
+#view-cube { position:absolute; top:10px; right:14px; width:84px; height:84px; perspective:260px; z-index:5; user-select:none; -webkit-user-select:none; }
+#view-cube-inner { position:absolute; left:50%; top:50%; width:0; height:0; transform-style:preserve-3d; }
+#view-cube .vc-face { position:absolute; left:-23px; top:-23px; width:46px; height:46px; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; letter-spacing:.04em; color:var(--text); background:var(--float-bg); border:1px solid color-mix(in srgb, var(--muted) 55%, transparent); backface-visibility:hidden; -webkit-backface-visibility:hidden; cursor:pointer; box-sizing:border-box; }
+#view-cube .vc-face:hover { background:var(--accent); color:var(--on-accent); }
+#examples { width:170px; }
+.tb-group { position:relative; padding:0 2px 0 0; }
+.tb-group:not(:first-child)::before { content:''; position:absolute; left:-5px; top:5px; bottom:5px; width:1px; background:var(--border); opacity:.8; }
+.tb-grip { display:flex; align-items:center; width:8px; margin-right:1px; color:var(--muted); opacity:0; cursor:grab; transition:opacity .12s; align-self:stretch; justify-content:center; }
+#topbar:hover .tb-grip, #toolbar2:hover .tb-grip { opacity:.5; }
+.tb-grip:hover { opacity:1 !important; color:var(--accent); }
+.tb-moving { background:color-mix(in srgb, var(--accent) 14%, transparent); border-radius:8px; box-shadow:0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent); }
+body.sp-dragging, body.sp-dragging * { cursor:grabbing !important; user-select:none !important; -webkit-user-select:none !important; }
+.chk.ico { position:relative; padding:5px 6px; }
+.chk.ico input { position:absolute; opacity:0; width:100%; height:100%; left:0; top:0; margin:0; cursor:pointer; }
+.chk.ico .ic { width:16px; height:16px; color:var(--muted); }
+.chk.ico:hover .ic { color:var(--text); }
+.chk.ico:has(input:checked) { background:color-mix(in srgb, var(--accent) 20%, transparent); }
+.chk.ico:has(input:checked) .ic { color:var(--accent); }
+#guifn-launcher { width:150px; }
+#viewbar .vb-grip { display:flex; align-items:center; padding:0 3px 0 2px; color:var(--muted); cursor:grab; opacity:.7; }
+#viewbar .vb-grip:hover { opacity:1; }
+#view-cube { cursor:grab; }
+#view-cube .vc-face { cursor:pointer; }
+#view-cube .vc-grip { position:absolute; left:50%; bottom:-2px; width:26px; height:5px; margin-left:-13px; border-radius:3px; background:var(--muted); opacity:.45; cursor:grab; }
+#view-cube:hover .vc-grip { opacity:.9; }
+.sp-dragging { cursor:grabbing !important; }
+@media (max-width:1560px) { #topbar .g-panels .lbl { display:none; } #topbar .g-panels button { padding:6px; } }
 </style>
 </head>
 <body>
 <div id="app">
   <div id="topbar">
-    <div class="title">&#9635; SanPyCAD Brep</div>
-    <span id="mode-badge" class="badge" title="This app only ever builds real build123d/OCCT B-rep solids -- there is no mesh/OpenSCAD-DSL mode here">B-rep</span>
-    <span id="build123d-badge" class="badge" title="Checking for build123d...">&#8943;</span>
-    <button id="btn-find" title="Find in the editor (Ctrl/Cmd+F)">&#128269; Find</button>
-    <button id="btn-replace" title="Find and replace, one match at a time -- asks Yes/No/All/Stop for each (Shift+Ctrl/Cmd+Option+F)">&#8644; Replace</button>
-    <button id="btn-replace-all" title="Replace every match at once, no confirmation per match (Shift+Ctrl/Cmd+Option+R)">&#8644; Replace All</button>
-    <button id="btn-reference" title="Browse a searchable reference of every function's documentation">&#128214; Reference</button>
-    <button id="btn-exchange" title="Port a SanPyCAD (mesh app) script into SanPyCAD-Brep by prefixing its ocad function calls with o.">&#8646; Exchange</button>
-    <button id="btn-sketch2d" title="Draw a 2D profile on a canvas (arcs, fillets, offset, trim, ...) and send it into this window's Python memory as a real variable -- polygon(sec)/linear_extrude(polygon(sec), h=...) etc. Needs ocad.py's own dependencies (scipy, sympy, scikit-image) installed.">&#9635; 2D Sketch</button>
-    <button id="btn-sketch-face" title="Click a face on the model to sketch a new 2D profile aligned to it -- opens the 2D Sketch panel looking straight at that face, anchored to the model's true (0,0,0) origin.">&#129517; Sketch on Face</button>
-    <button id="btn-vars" title="List every variable your script assigns (or that's otherwise in memory), with checkboxes to preview it as a line/points in the 3D view, and Overwrite/Delete actions on its in-memory value.">&#128203; Variables</button>
-    <span id="kernel-status" class="badge" title="Python-mode variables kept in memory between Render runs, Jupyter-style -- a variable stays available even after you comment out the line that computed it, so a slow computation only needs to run once.">0 vars in memory</span>
-    <button id="btn-reset-kernel" title="Stop &amp; restart the kernel -- clears every variable kept in memory between runs (like restarting a Jupyter kernel), AND immediately interrupts a Render that's currently stuck/hung/taking too long, in case of a mistake in your script (e.g. an infinite loop). The next Render starts from a completely clean slate.">&#9209; Stop / Restart Kernel</button>
-    <div id="export-menu">
-      <button id="export-menu-btn" title="Export the current scene" aria-haspopup="true">&#8681; Export &#9662;</button>
-      <div id="export-menu-panel">
-        <button data-kind="stl" data-ext="stl">STL
-          <span class="export-sub">Binary mesh, most 3D printing/CAD tools</span>
-        </button>
-        <button data-kind="obj" data-ext="obj">OBJ
-          <span class="export-sub">Wavefront mesh, widely supported</span>
-        </button>
-        <button data-kind="svg" data-ext="svg">SVG
-          <span class="export-sub">Engineering drawing: FRONT/TOP/RIGHT/ISO views, hidden edges dashed</span>
-        </button>
-        <button data-kind="dxf" data-ext="dxf">DXF
-          <span class="export-sub">Opens in AutoCAD -- true .dwg needs a paid SDK</span>
-        </button>
-      </div>
-    </div>
-    <div id="display-settings-menu">
-      <button id="display-settings-btn" title="Set the 3D viewer's own display-only mesh tessellation quality -- Tolerance and Angular tolerance, the same two knobs show(x, tolerance=..., angular_tolerance=...) takes in a script, but as a standing default here instead of typed into every show() call. Never affects STEP/BREP export, volume()/area(), or fillet()/chamfer() -- those always use their own separate, unrelated defaults." aria-haspopup="true">&#9881; Display&hellip;</button>
+    <div class="title"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg> SanPyCAD Brep</div>
+    <div class="tb-group g-mode">
+      <span id="mode-badge" class="badge" title="This app only ever builds real build123d/OCCT B-rep solids -- there is no mesh/OpenSCAD-DSL mode here">B-rep</span>
+      <div id="display-settings-menu">
+      <button id="display-settings-btn" title="Set the 3D viewer's own display-only mesh tessellation quality -- Tolerance and Angular tolerance, the same two knobs show(x, tolerance=..., angular_tolerance=...) takes in a script, but as a standing default here instead of typed into every show() call. Never affects STEP/BREP export, volume()/area(), or fillet()/chamfer() -- those always use their own separate, unrelated defaults." aria-haspopup="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M19 7h1M4 17h3M13 17h7M4 12h1M11 12h9"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/><circle cx="8" cy="12" r="2.2"/></svg><span class="lbl">Display&hellip;</span></button>
       <div id="display-settings-panel">
         <div class="probe-field-row">
           <span class="probe-field-label">Tolerance</span>
@@ -869,19 +999,89 @@
         <div class="hint">Display only -- STEP/BREP export and fillet()/volume()/etc always use their own separate defaults, unaffected by this. Remembered in this browser for next time.</div>
       </div>
     </div>
-    <button id="btn-drawing" title="Open an interactive engineering drawing (FRONT/TOP/RIGHT/ISO views, hidden edges dashed) -- click points/circles/edges to add linear, radius/diameter, angle, or center-distance dimensions, then download the dimensioned sheet as SVG. For a quick one-click flat SVG with no dimensioning, use Export &#8594; SVG instead.">&#128207; Drawing</button>
-    <button id="btn-capture-view" title="Orbit the model to whatever angle you want here in the 3D view, then click this to add that exact orientation as a new named view on the Drawing tab's sheet -- alongside FRONT/TOP/RIGHT/ISO, not replacing them. Open the Drawing tab (or click Views there) to see/remove captured views.">&#128260; Add View</button>
-    <button id="btn-save" title="Save the current script (Ctrl/Cmd+S)">&#128190; Save</button>
-    <button id="btn-save-as" title="Save the current script to a new file">Save As&hellip;</button>
-    <button id="btn-open" title="Open a previously saved .py script">&#128194; Open</button>
-    <input id="open-file-input" type="file" accept=".py,.txt" style="display:none">
-    <button id="btn-render" class="primary" title="Ctrl/Cmd + Enter">&#9654; Render</button>
-    <select id="examples"><option value="">Examples&hellip;</option></select>
-    <label title="Toggle between perspective and orthographic (no vanishing-point distortion) camera projection">
-      <input id="ortho-toggle" type="checkbox"> Orthographic
+    </div>
+    <span class="tb-sep"></span>
+    <div class="tb-group g-file">
+      <button id="btn-open" title="Open a previously saved .py script"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="lbl">Open</span></button>
+      <button id="btn-save" title="Save the current script (Ctrl/Cmd+S)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v6h7V3M8 21v-7h8v7"/></svg><span class="lbl">Save</span></button>
+      <button id="btn-save-as" title="Save the current script to a new file">Save As&hellip;</button>
+      <div id="export-menu">
+      <button id="export-menu-btn" title="Export the current scene" aria-haspopup="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5M4 20h16"/></svg><span class="lbl">Export <svg class="ic caret" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span></button>
+      <div id="export-menu-panel">
+        <button data-kind="stl" data-ext="stl">STL
+          <span class="export-sub">Binary mesh, most 3D printing/CAD tools</span>
+        </button>
+        <button data-kind="obj" data-ext="obj">OBJ
+          <span class="export-sub">Wavefront mesh, widely supported</span>
+        </button>
+        <button data-kind="svg" data-ext="svg">SVG
+          <span class="export-sub">Engineering drawing: FRONT/TOP/RIGHT/ISO views, hidden edges dashed</span>
+        </button>
+        <button data-kind="dxf" data-ext="dxf">DXF
+          <span class="export-sub">Opens in AutoCAD -- true .dwg needs a paid SDK</span>
+        </button>
+      </div>
+    </div>
+    </div>
+    <span class="tb-sep"></span>
+    <div class="tb-group g-edit">
+      <button id="btn-find" title="Find in the editor (Ctrl/Cmd+F)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span class="lbl">Find</span></button>
+      <button id="btn-replace" title="Find and replace, one match at a time -- asks Yes/No/All/Stop for each (Shift+Ctrl/Cmd+Option+F)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg><span class="lbl">Replace</span></button>
+      <button id="btn-replace-all" title="Replace every match at once, no confirmation per match (Shift+Ctrl/Cmd+Option+R)"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg><span class="lbl">Replace All</span></button>
+    </div>
+    <span class="tb-sep"></span>
+    <div class="tb-group g-run">
+      <button id="btn-render" class="primary" title="Ctrl/Cmd + Enter"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z" fill="currentColor"/></svg><span class="lbl">Render</span></button>
+      <select id="examples"><option value="">Examples&hellip;</option></select>
+    </div>
+    <div class="spacer"></div>
+    <div class="tb-group g-info">
+    </div>
+    <div class="tb-group g-panels">
+      <button id="btn-reference" title="Browse a searchable reference of every function's documentation"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5"/></svg><span class="lbl">Reference</span></button>
+      <button id="btn-vars" title="List every variable your script assigns (or that's otherwise in memory), with checkboxes to preview it as a line/points in the 3D view, and Overwrite/Delete actions on its in-memory value."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span class="lbl">Variables</span></button>
+      <button id="btn-sketch2d" title="Draw a 2D profile on a canvas (arcs, fillets, offset, trim, ...) and send it into this window's Python memory as a real variable -- polygon(sec)/linear_extrude(polygon(sec), h=...) etc. Needs ocad.py's own dependencies (scipy, sympy, scikit-image) installed."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4-1L19 8l-3-3L5 16z"/></svg><span class="lbl">2D Sketch</span></button>
+      <button id="btn-exchange" title="Port a SanPyCAD (mesh app) script into SanPyCAD-Brep by prefixing its ocad function calls with o."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg><span class="lbl">Exchange</span></button>
+    </div>
+    <div class="tb-group g-theme"><button id="btn-theme" class="icon-only" title="Switch between dark and light theme"><svg class="ic i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6L19 19M19 5l-1.4 1.4M6.4 17.6L5 19"/></svg><svg class="ic i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg></button></div>
+  </div>
+  <div id="toolbar2">
+    <div class="tb-group g-toggles">
+      <label class="chk" title="Toggle between perspective and orthographic (no vanishing-point distortion) camera projection">
+      <input id="ortho-toggle" type="checkbox"> Ortho
     </label>
-    <button id="btn-fit-view" title="Re-center and zoom to fit the model in the viewport -- use this if you've scrolled/panned it out of view">&#8981; Fit</button>
-    <select id="view-preset" title="Snap to a standard view, same as OpenSCAD's View menu">
+      <label class="chk ico" title="Show the X/Y/Z axes, same as OpenSCAD's Show Axes">
+      <input id="axes-toggle" type="checkbox" checked><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 13V3M9 6l3-3 3 3"/><path d="M12 13L4.5 18.5M4.5 14.5v4h4"/><path d="M12 13l7.5 5.5M15.5 18.5h4v-4"/></svg></label>
+      <label class="chk ico" title="Outline the model's edges">
+      <input id="edges-toggle" type="checkbox"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM4 12h16M12 4v16M4 4l16 16"/></svg></label>
+      <label class="chk ico" title="Wrap long lines in the editor instead of scrolling sideways">
+      <input id="wrap-toggle" type="checkbox"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h13a3.5 3.5 0 0 1 0 7h-4"/><path d="M14 16l-2 3 2 3M3 18h5"/></svg></label>
+    </div>
+    <span class="tb-sep"></span>
+    <div class="tb-group g-measure">
+      <select id="measure-mode" title="Click vertices or edges in the 3D view to measure distance/angle between them, same as OpenSCAD's Measure tool">
+      <option value="off">Measure: Off</option>
+      <option value="vertex">Measure: Vertices</option>
+      <option value="edge">Measure: Edges</option>
+    </select>
+      <button id="btn-dim3d" title="Click points directly on the 3D model (vertices, hole/shaft centers, edges, or faces) to place permanent labeled dimension lines, like the Drawing tab's Linear tool but in 3D. Every pick is shown highlighted in yellow -- its real edge/face curve, plus a hole or shaft's own axis -- as soon as it resolves, so it's always clear what a dimension actually attached to. Click a placed dimension (or its row in the panel) to select it and see that highlight again, then Delete or Clear All"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/></svg><span class="lbl">Dimension</span></button>
+      <button id="btn-probe-box" title="Click directly on edges or faces in the 3D view to add their real indices to a list, ready to insert into your script for fillet()/chamfer()/offset()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M8 16l5-5 2 2-5 5H8z"/></svg><span class="lbl">Pick Edges/Faces</span></button>
+    </div>
+    <span class="tb-sep"></span>
+    <div class="tb-group g-model">
+      <button id="btn-sketch-face" title="Click a face on the model to sketch a new 2D profile aligned to it -- opens the 2D Sketch panel looking straight at that face, anchored to the model's true (0,0,0) origin."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M8 16l5-5 2 2-5 5H8z"/></svg><span class="lbl">Sketch on Face</span></button>
+      <button id="btn-drawing" title="Open an interactive engineering drawing (FRONT/TOP/RIGHT/ISO views, hidden edges dashed) -- click points/circles/edges to add linear, radius/diameter, angle, or center-distance dimensions, then download the dimensioned sheet as SVG. For a quick one-click flat SVG with no dimensioning, use Export &#8594; SVG instead."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v16h16z"/><path d="M4 12h4M12 20v-4"/></svg><span class="lbl">Drawing</span></button>
+      <button id="btn-capture-view" title="Orbit the model to whatever angle you want here in the 3D view, then click this to add that exact orientation as a new named view on the Drawing tab's sheet -- alongside FRONT/TOP/RIGHT/ISO, not replacing them. Open the Drawing tab (or click Views there) to see/remove captured views."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span class="lbl">Add View</span></button>
+    </div>
+    <div class="tb-group g-font">
+      <div id="font-size-control" title="Editor font size -- Ctrl/Cmd+= to increase, Ctrl/Cmd+- to decrease, Ctrl/Cmd+0 (or double-click the size) to reset, same shortcuts as a browser/VS Code zoom">
+      <button id="font-size-dec" type="button" aria-label="Decrease editor font size">A&minus;</button>
+      <span id="font-size-label">13.5px</span>
+      <button id="font-size-inc" type="button" aria-label="Increase editor font size">A+</button>
+    </div>
+    </div>
+    <div id="tb-hidden" hidden>
+      <select id="view-preset" title="Snap to a standard view, same as OpenSCAD's View menu">
       <option value="" disabled hidden></option>
       <option value="diagonal">View: Diagonal</option>
       <option value="top">View: Top</option>
@@ -891,29 +1091,9 @@
       <option value="left">View: Left</option>
       <option value="right">View: Right</option>
     </select>
-    <label title="Show the X/Y/Z axes, same as OpenSCAD's Show Axes">
-      <input id="axes-toggle" type="checkbox" checked> Axes
-    </label>
-    <label title="Outline the model's edges">
-      <input id="edges-toggle" type="checkbox"> Edges
-    </label>
-    <label title="Wrap long lines in the editor instead of scrolling sideways">
-      <input id="wrap-toggle" type="checkbox"> Wrap
-    </label>
-    <div id="font-size-control" title="Editor font size -- Ctrl/Cmd+= to increase, Ctrl/Cmd+- to decrease, Ctrl/Cmd+0 (or double-click the size) to reset, same shortcuts as a browser/VS Code zoom">
-      <button id="font-size-dec" type="button" aria-label="Decrease editor font size">A&minus;</button>
-      <span id="font-size-label">13.5px</span>
-      <button id="font-size-inc" type="button" aria-label="Increase editor font size">A+</button>
+      <input id="open-file-input" type="file" accept=".py,.txt" style="display:none">
+      <input id="csg-res" type="range" min="24" max="120" value="56" step="4"><span id="csg-res-val">56</span>
     </div>
-    <select id="measure-mode" title="Click vertices or edges in the 3D view to measure distance/angle between them, same as OpenSCAD's Measure tool">
-      <option value="off">Measure: Off</option>
-      <option value="vertex">Measure: Vertices</option>
-      <option value="edge">Measure: Edges</option>
-    </select>
-    <button id="btn-probe-box" title="Click directly on edges or faces in the 3D view to add their real indices to a list, ready to insert into your script for fillet()/chamfer()/offset()">&#128204; Pick Edges/Faces</button>
-    <button id="btn-dim3d" title="Click points directly on the 3D model (vertices, hole/shaft centers, edges, or faces) to place permanent labeled dimension lines, like the Drawing tab's Linear tool but in 3D. Every pick is shown highlighted in yellow -- its real edge/face curve, plus a hole or shaft's own axis -- as soon as it resolves, so it's always clear what a dimension actually attached to. Click a placed dimension (or its row in the panel) to select it and see that highlight again, then Delete or Clear All">&#128207; Dimension</button>
-    <div class="spacer"></div>
-    <label><span id="status-dot"></span><span id="status-text">idle</span></label>
   </div>
   <div id="main">
     <div id="editor-pane">
@@ -927,6 +1107,8 @@
     </div>
     <div id="pane-resizer" title="Drag to resize"></div>
     <div id="viewer-pane">
+      <div id="viewbar"><span class="vb-grip" title="Drag to move this toolbar"><svg viewBox="0 0 8 16" width="8" height="16"><g fill="currentColor"><circle cx="2" cy="3" r="1"/><circle cx="6" cy="3" r="1"/><circle cx="2" cy="8" r="1"/><circle cx="6" cy="8" r="1"/><circle cx="2" cy="13" r="1"/><circle cx="6" cy="13" r="1"/></g></svg></span><button id="btn-fit-view" title="Re-center and zoom to fit the model in the viewport -- use this if you've scrolled/panned it out of view"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button><span class="vb-sep"></span><button data-view="diagonal" title="Isometric view"><svg class="ic cube" viewBox="0 0 24 25" aria-hidden="true"><polygon points="3,8 12,3 21,8 12,13" fill="currentColor" opacity=".55" stroke="none"/><polygon points="3,8 12,13 12,22 3,17" fill="currentColor" opacity=".25" stroke="none"/><polygon points="12,13 21,8 21,17 12,22" fill="currentColor" opacity=".4" stroke="none"/><path d="M12 3l9 5v9l-9 5-9-5V8z" fill="none"/><path d="M3 8l9 5 9-5M12 13v9" fill="none"/></svg></button><button data-view="front" title="Front view"><svg class="ic cube" viewBox="0 0 24 25" aria-hidden="true"><polygon points="3,8 12,13 12,22 3,17" fill="currentColor" opacity=".85" stroke="none"/><path d="M12 3l9 5v9l-9 5-9-5V8z" fill="none"/><path d="M3 8l9 5 9-5M12 13v9" fill="none"/></svg></button><button data-view="top" title="Top view"><svg class="ic cube" viewBox="0 0 24 25" aria-hidden="true"><polygon points="3,8 12,3 21,8 12,13" fill="currentColor" opacity=".85" stroke="none"/><path d="M12 3l9 5v9l-9 5-9-5V8z" fill="none"/><path d="M3 8l9 5 9-5M12 13v9" fill="none"/></svg></button><button data-view="right" title="Right view"><svg class="ic cube" viewBox="0 0 24 25" aria-hidden="true"><polygon points="12,13 21,8 21,17 12,22" fill="currentColor" opacity=".85" stroke="none"/><path d="M12 3l9 5v9l-9 5-9-5V8z" fill="none"/><path d="M3 8l9 5 9-5M12 13v9" fill="none"/></svg></button><button data-view="back" title="Rear view"><svg class="ic cube" viewBox="0 0 24 25" aria-hidden="true"><polygon points="12,3 21,8 21,17 12,13" fill="currentColor" opacity=".85" stroke="none"/><path d="M12 3l9 5v9l-9 5-9-5V8z" fill="none"/><path d="M3 8l9 5 9-5M12 13v9" fill="none" stroke-dasharray="1.8 1.8" opacity=".7"/></svg></button><button data-view="bottom" title="Bottom view"><svg class="ic cube" viewBox="0 0 24 25" aria-hidden="true"><polygon points="3,17 12,22 21,17 12,13" fill="currentColor" opacity=".85" stroke="none"/><path d="M12 3l9 5v9l-9 5-9-5V8z" fill="none"/><path d="M3 8l9 5 9-5M12 13v9" fill="none" stroke-dasharray="1.8 1.8" opacity=".7"/></svg></button><button data-view="left" title="Left view"><svg class="ic cube" viewBox="0 0 24 25" aria-hidden="true"><polygon points="12,3 3,8 3,17 12,13" fill="currentColor" opacity=".85" stroke="none"/><path d="M12 3l9 5v9l-9 5-9-5V8z" fill="none"/><path d="M3 8l9 5 9-5M12 13v9" fill="none" stroke-dasharray="1.8 1.8" opacity=".7"/></svg></button></div>
+      <div id="view-cube"><div id="view-cube-inner"></div><div class="vc-grip" title="Drag to move the view cube"></div></div>
       <div id="render-spinner">&#9203; rendering&hellip;</div>
       <div id="viewer-hint">drag to orbit &middot; scroll to zoom &middot; right-drag to pan</div>
       <canvas id="axis-gizmo" width="84" height="84" title="Orientation indicator, same as OpenSCAD's small x/y/z corner indicator"></canvas>
@@ -1148,6 +1330,14 @@
       <div id="drawing-status">Pick a tool above, then click on the views to add a dimension. Scroll to zoom, middle-drag (or hold Space + drag) to pan.</div>
     </div>
   </div>
+  <div id="statusbar">
+    <label><span id="status-dot"></span><span id="status-text">idle</span></label>
+    <span id="kernel-status" class="badge" title="Python-mode variables kept in memory between Render runs, Jupyter-style -- a variable stays available even after you comment out the line that computed it, so a slow computation only needs to run once.">0 vars in memory</span>
+    <button id="btn-reset-kernel" title="Stop &amp; restart the kernel -- clears every variable kept in memory between runs (like restarting a Jupyter kernel), AND immediately interrupts a Render that's currently stuck/hung/taking too long, in case of a mistake in your script (e.g. an infinite loop). The next Render starts from a completely clean slate."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span class="lbl">Stop / Restart Kernel</span></button>
+    <div class="spacer"></div>
+    <span id="build123d-badge" class="badge" title="Checking for build123d...">&#8943;</span>
+    <button id="btn-reset-layout" title="Put the toolbar groups and floating panels back in their default places">Reset layout</button>
+  </div>
   <div id="reference-overlay">
     <div id="reference-modal">
       <div id="reference-header">
@@ -1346,7 +1536,7 @@ let savedPath = null;
 
 const cm = CodeMirror.fromTextArea(document.getElementById('editor'), {
   mode: 'text/x-python',
-  theme: 'dracula',
+  theme: ((function(){try{return localStorage.getItem('sp-theme')==='light'?'sp-light':'sp-dark';}catch(e){return 'sp-dark';}})()),
   lineNumbers: true,
   matchBrackets: true,
   autoCloseBrackets: true,
@@ -2401,6 +2591,21 @@ viewerPane.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xeceef0);
+// ---- dark / light theme (persisted per-browser; default dark) ----
+const SP_THEME = { dark: { bg: 0x242830, cm: 'sp-dark' }, light: { bg: 0xeceef0, cm: 'sp-light' } };
+function applyTheme(t) {
+  if (!SP_THEME[t]) t = 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  try { localStorage.setItem('sp-theme', t); } catch (e) {}
+  try { cm.setOption('theme', SP_THEME[t].cm); } catch (e) {}
+  try { scene.background = new THREE.Color(SP_THEME[t].bg); } catch (e) {}
+  window.dispatchEvent(new CustomEvent('sp-theme-change', { detail: t }));
+}
+document.getElementById('btn-theme').addEventListener('click', () => {
+  applyTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+});
+applyTheme(document.documentElement.getAttribute('data-theme') || 'dark');
+
 
 // Two cameras sharing position/target, so toggling perspective <-> ortho
 // keeps whatever view you were looking at. Only one is ever the active
@@ -2837,6 +3042,175 @@ viewPresetSelect.addEventListener('blur', () => {
   if (!viewPresetSelect.value) viewPresetSelect.value = viewPresetPrevValue;
 });
 
+
+// ---- view bar (cube icons) + interactive view cube ----
+(function () {
+  const bar = document.getElementById('viewbar');
+  const cubeEl = document.getElementById('view-cube-inner');
+  if (!bar || !cubeEl) return;
+  bar.querySelectorAll('button[data-view]').forEach(b => {
+    b.addEventListener('click', () => setPresetView(b.dataset.view));
+  });
+  const H = 23;
+  // face: outward normal n, text-right u, text-down d (all world axes), preset name
+  const FACES = [
+    { t: 'FRONT',  v: 'front',  n: [0,-1,0], u: [1,0,0],  d: [0,0,-1] },
+    { t: 'BACK',   v: 'back',   n: [0,1,0],  u: [-1,0,0], d: [0,0,-1] },
+    { t: 'RIGHT',  v: 'right',  n: [1,0,0],  u: [0,1,0],  d: [0,0,-1] },
+    { t: 'LEFT',   v: 'left',   n: [-1,0,0], u: [0,-1,0], d: [0,0,-1] },
+    { t: 'TOP',    v: 'top',    n: [0,0,1],  u: [1,0,0],  d: [0,-1,0] },
+    { t: 'BOTTOM', v: 'bottom', n: [0,0,-1], u: [1,0,0],  d: [0,1,0] },
+  ];
+  const els = FACES.map(f => {
+    const e = document.createElement('div');
+    e.className = 'vc-face'; e.textContent = f.t; e.title = f.t.charAt(0) + f.t.slice(1).toLowerCase() + ' view';
+    e.addEventListener('click', () => setPresetView(f.v));
+    cubeEl.appendChild(e); return e;
+  });
+  const q = new THREE.Quaternion(), m = new THREE.Matrix4();
+  const dirs = { diagonal: new THREE.Vector3(0.6,-0.9,0.6).normalize() };
+  Object.keys(VIEW_PRESET_DIRS).forEach(k => { dirs[k] = new THREE.Vector3(...VIEW_PRESET_DIRS[k]).normalize(); });
+  const btns = Array.from(bar.querySelectorAll('button[data-view]'));
+  let lastKey = '';
+  window.updateViewCube = function () {
+    q.copy(camera.quaternion).invert();
+    m.makeRotationFromQuaternion(q);
+    const e = m.elements; // column-major, world -> camera
+    const key = e.slice(0, 11).map(x => x.toFixed(3)).join(',');
+    if (key === lastKey) return; lastKey = key;
+    // r[row][col]
+    const r = [[e[0],e[4],e[8]],[e[1],e[5],e[9]],[e[2],e[6],e[10]]];
+    const cam = (v) => [ r[0][0]*v[0]+r[0][1]*v[1]+r[0][2]*v[2],
+                        -(r[1][0]*v[0]+r[1][1]*v[1]+r[1][2]*v[2]),   // y up -> css y down
+                         r[2][0]*v[0]+r[2][1]*v[1]+r[2][2]*v[2] ];
+    FACES.forEach((f, i) => {
+      const u = cam(f.u), d = cam(f.d), n = cam(f.n);
+      const t = n.map(x => x * H);
+      els[i].style.transform = 'matrix3d(' + [u[0],u[1],u[2],0, d[0],d[1],d[2],0, n[0],n[1],n[2],0, t[0],t[1],t[2],1].join(',') + ')';
+    });
+    const look = new THREE.Vector3(); camera.getWorldDirection(look); look.negate(); // from target toward camera
+    btns.forEach(b => { const v = dirs[b.dataset.view]; b.classList.toggle('vb-active', !!v && look.dot(v) > 0.9995); });
+  };
+  window.updateViewCube();
+})();
+window.addEventListener('sp-theme-change', () => { try { window.updateViewCube && window.updateViewCube(); } catch (e) {} });
+
+
+// ---- movable floating UI: every panel / the view bar / the view cube can be dragged and remembers its spot ----
+(function () {
+  const KEY = 'sp-pos-';
+  const container = document.getElementById('viewer-pane');
+  function save(el, id) { try { localStorage.setItem(KEY + id, JSON.stringify({ l: el.offsetLeft, t: el.offsetTop })); } catch (e) {} }
+  function clamp(el, cont) {
+    const l = Math.min(Math.max(el.offsetLeft, 0), Math.max(0, cont.clientWidth - el.offsetWidth));
+    const t = Math.min(Math.max(el.offsetTop, 0), Math.max(0, cont.clientHeight - el.offsetHeight));
+    el.style.left = l + 'px'; el.style.top = t + 'px'; el.style.right = 'auto'; el.style.bottom = 'auto';
+  }
+  function restore(el, id, cont) {
+    try {
+      const p = JSON.parse(localStorage.getItem(KEY + id) || 'null');
+      if (!p) return;
+      el.style.left = p.l + 'px'; el.style.top = p.t + 'px'; el.style.right = 'auto'; el.style.bottom = 'auto';
+    } catch (e) {}
+  }
+  // draggable by a handle (viewbar grip / cube background); header-based panels use makeDraggablePanel already
+  function movable(el, id, isHandle, cont) {
+    let drag = null;
+    el.addEventListener('pointerdown', (e) => {
+      if (!isHandle(e.target) || e.button !== 0) return;
+      drag = { x: e.clientX, y: e.clientY, l: el.offsetLeft, t: el.offsetTop };
+      el.setPointerCapture(e.pointerId); el.classList.add('sp-dragging'); e.preventDefault();
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const l = Math.min(Math.max(drag.l + e.clientX - drag.x, 0), Math.max(0, cont.clientWidth - el.offsetWidth));
+      const t = Math.min(Math.max(drag.t + e.clientY - drag.y, 0), Math.max(0, cont.clientHeight - el.offsetHeight));
+      el.style.left = l + 'px'; el.style.top = t + 'px'; el.style.right = 'auto'; el.style.bottom = 'auto';
+    });
+    const end = () => { if (!drag) return; drag = null; el.classList.remove('sp-dragging'); save(el, id); };
+    el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+    restore(el, id, cont);
+    window.addEventListener('resize', () => { try { clamp(el, cont); } catch (e) {} });
+  }
+  const vb = document.getElementById('viewbar'), vc = document.getElementById('view-cube');
+  if (vb) movable(vb, 'viewbar', t => !!t.closest('.vb-grip') || t === vb, container);
+  if (vc) movable(vc, 'viewcube', t => t === vc || t.classList.contains('vc-grip'), container);
+  // existing header-drag panels: just remember where they were left
+  if (typeof makeDraggablePanel === 'function') [['measure-panel','measure-panel-header',container],['dim3d-panel','dim3d-panel-header',container],
+   ['guifn-panel','guifn-panel-header',container],['vars-panel','vars-panel-header',document.getElementById('editor-pane')]].forEach(([pid, hid, cont]) => {
+    const p = document.getElementById(pid), h = document.getElementById(hid);
+    if (!p || !h) return;
+    restore(p, pid, cont);
+    h.addEventListener('pointerup', () => save(p, pid));
+  });
+})();
+
+// ---- rearrangeable toolbar groups: drag a group's grip to move it anywhere in either toolbar row ----
+(function () {
+  const bars = [document.getElementById('topbar'), document.getElementById('toolbar2')].filter(Boolean);
+  if (!bars.length) return;
+  const LKEY = 'sp-toolbar-layout';
+  bars.forEach(b => b.querySelectorAll(':scope > .tb-sep').forEach(s => s.remove()));
+  const tokenOf = (el) => el.classList.contains('spacer') ? '|spacer' : (el.classList.contains('title') ? '|title' :
+    ([...el.classList].find(c => c.startsWith('g-')) || null));
+  function restore() {
+    let saved = null;
+    try { saved = JSON.parse(localStorage.getItem(LKEY) || 'null'); } catch (e) {}
+    if (!saved) return;
+    const all = {};
+    bars.forEach(b => [...b.children].forEach(el => { const t = tokenOf(el); if (t) all[t] = el; }));
+    bars.forEach((b, i) => {
+      const order = saved['bar' + i]; if (!order) return;
+      order.forEach(t => { if (all[t]) { b.appendChild(all[t]); delete all[t]; } });
+    });
+    // anything not in the saved layout (e.g. added in a later version) keeps its default bar, at the end
+    Object.keys(all).forEach(t => { if (t === '|title' || t === '|spacer') return; });
+  }
+  function save() {
+    const out = {};
+    bars.forEach((b, i) => { out['bar' + i] = [...b.children].map(tokenOf).filter(Boolean); });
+    try { localStorage.setItem(LKEY, JSON.stringify(out)); } catch (e) {}
+  }
+  restore();
+  bars.forEach(bar => bar.querySelectorAll(':scope > .tb-group').forEach(g => {
+    if (g.querySelector(':scope > .tb-grip')) return;
+    const grip = document.createElement('span');
+    grip.className = 'tb-grip'; grip.title = 'Drag to move this group of buttons';
+    grip.innerHTML = '<svg viewBox="0 0 6 14" width="6" height="14"><g fill="currentColor"><circle cx="1.5" cy="2" r="1"/><circle cx="4.5" cy="2" r="1"/><circle cx="1.5" cy="7" r="1"/><circle cx="4.5" cy="7" r="1"/><circle cx="1.5" cy="12" r="1"/><circle cx="4.5" cy="12" r="1"/></g></svg>';
+    g.insertBefore(grip, g.firstChild);
+    grip.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      g.classList.add('tb-moving'); document.body.classList.add('sp-dragging');
+      const move = (ev) => {
+        // pick the bar under the pointer, then the nearest other group in it
+        let bar = bars.find(b => { const r = b.getBoundingClientRect(); return ev.clientY >= r.top && ev.clientY <= r.bottom; });
+        if (!bar) bar = ev.clientY < bars[0].getBoundingClientRect().top ? bars[0] : bars[bars.length - 1];
+        const kids = [...bar.children].filter(el => el !== g && (el.classList.contains('tb-group') || el.classList.contains('spacer')));
+        let best = null, bd = Infinity;
+        kids.forEach(el => {
+          const r = el.getBoundingClientRect();
+          if (ev.clientY < r.top - 6 || ev.clientY > r.bottom + 6) return;
+          const cx = r.left + r.width / 2, d = Math.abs(ev.clientX - cx);
+          if (d < bd) { bd = d; best = { el, after: ev.clientX > cx }; }
+        });
+        if (!best) { bar.appendChild(g); return; }
+        if (best.after) best.el.after(g); else best.el.before(g);
+      };
+      const up = () => {
+        document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up);
+        g.classList.remove('tb-moving'); document.body.classList.remove('sp-dragging'); save();
+      };
+      document.addEventListener('pointermove', move); document.addEventListener('pointerup', up);
+    });
+  }));
+  const rl = document.getElementById('btn-reset-layout');
+  if (rl) rl.addEventListener('click', () => {
+    try { Object.keys(localStorage).filter(k => k === LKEY || k.startsWith('sp-pos-')).forEach(k => localStorage.removeItem(k)); } catch (e) {}
+    location.reload();
+  });
+})();
+
 scene.add(new THREE.HemisphereLight(0xffffff, 0x666677, 0.85));
 const dirLight = new THREE.DirectionalLight(0xffffff, 0.45);
 dirLight.position.set(1, -1, 2);
@@ -3122,6 +3496,7 @@ function animate() {
   // first frame or two.
   try { updateVarPreviewPointSizes(); } catch (e) { console.error('updateVarPreviewPointSizes failed', e); }
   if (axesGroup.visible) drawAxisGizmo();
+  try { window.updateViewCube && window.updateViewCube(); } catch (e) { console.error('updateViewCube failed', e); }
   renderer.render(scene, camera);
 }
 animate();
