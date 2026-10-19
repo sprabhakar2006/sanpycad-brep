@@ -824,8 +824,8 @@
   --text:#e6e8ec; --muted:#8e95a3; --accent:#4c9aff; --accent-2:#5fc48a;
   --on-accent:#0b1b33; --danger:#ff6b6b; --warn:#f2b84b;
   --float-bg:rgba(27,30,36,0.95); --float-hdr:rgba(255,255,255,0.05); --float-line:rgba(255,255,255,0.09);
-  --hover:rgba(255,255,255,0.07); --viewer-bg:#242830; --chip-bg:rgba(255,255,255,0.06);
-  --shadow:0 6px 20px rgba(0,0,0,0.45); --hint-bg:rgba(20,22,26,0.72); --hint-fg:#9aa1ae;
+  --hover:rgba(255,255,255,0.07); --viewer-bg:#eceef0; --chip-bg:rgba(255,255,255,0.06);
+  --shadow:0 6px 20px rgba(0,0,0,0.45); --hint-bg:rgba(255,255,255,0.8); --hint-fg:#6b7280;
 }
 [data-theme="light"] {
   --bg-0:#f3f4f7; --panel-bg:#f7f8fa; --panel-bg-2:#ffffff; --border:#d6dae2;
@@ -949,6 +949,7 @@ input[type=checkbox] { accent-color:var(--accent); }
 #view-cube { position:absolute; top:10px; right:14px; width:84px; height:84px; perspective:260px; z-index:5; user-select:none; -webkit-user-select:none; }
 #view-cube-inner { position:absolute; left:50%; top:50%; width:0; height:0; transform-style:preserve-3d; }
 #view-cube .vc-face { position:absolute; left:-23px; top:-23px; width:46px; height:46px; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; letter-spacing:.04em; color:var(--text); background:var(--float-bg); border:1px solid color-mix(in srgb, var(--muted) 55%, transparent); backface-visibility:hidden; -webkit-backface-visibility:hidden; cursor:pointer; box-sizing:border-box; }
+#view-cube .vc-face { border-radius:10px; box-shadow:inset 0 0 0 1px rgba(255,255,255,0.05), inset 0 2px 6px rgba(255,255,255,0.06); }
 #view-cube .vc-face:hover { background:var(--accent); color:var(--on-accent); }
 #examples { width:170px; }
 .tb-group { position:relative; padding:0 2px 0 0; }
@@ -2592,7 +2593,7 @@ viewerPane.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xeceef0);
 // ---- dark / light theme (persisted per-browser; default dark) ----
-const SP_THEME = { dark: { bg: 0x242830, cm: 'sp-dark' }, light: { bg: 0xeceef0, cm: 'sp-light' } };
+const SP_THEME = { dark: { bg: 0xeceef0, cm: 'sp-dark' }, light: { bg: 0xeceef0, cm: 'sp-light' } };
 function applyTheme(t) {
   if (!SP_THEME[t]) t = 'dark';
   document.documentElement.setAttribute('data-theme', t);
@@ -2966,7 +2967,26 @@ function updateClippingPlanes() {
     const focusNear = depthToFocus > 0 ? depthToFocus * 0.1 : 1e-9;
     near = Math.min(near, focusNear);
   }
-  const far = Math.max(depthToCenter + sceneRadius * 2, 10);
+  let far = Math.max(depthToCenter + sceneRadius * 2, 10);
+  // keep the whole axis inside the far plane too -- with an empty/small scene sceneRadius is tiny, which used to
+  // clip most of the (camera-distance-sized) axis away so it looked like it had disappeared
+  if (axesGroup.visible && currentAxesHalf > 0) {
+    far = Math.max(far, depthToCenter + currentAxesHalf * 1.2);
+  }
+  // The axis also pokes toward the camera (e.g. +Z in a diagonal view); with an
+  // empty scene sceneRadius is tiny, so near would otherwise cut that half off.
+  if (camera.isOrthographicCamera || (axesGroup.visible && currentAxesHalf > 0)) {
+    const axH = (axesGroup.visible ? currentAxesHalf : 0);
+    if (camera.isPerspectiveCamera) {
+      near = Math.min(near, Math.max(depthToCenter - axH * 1.75, depthToCenter * 0.02, 1e-4));
+    } else {
+      // orthographic depth is linear, so a negative near is fine and avoids clipping anything
+      // within the axis/scene extent, whatever direction the camera orbits to
+      const ext = Math.max(sceneRadius, axH * 1.75) * 1.1;
+      near = Math.min(near, depthToCenter - ext);
+      far = Math.max(far, depthToCenter + ext);
+    }
+  }
   if (camera.near !== near || camera.far !== far) {
     camera.near = near;
     camera.far = far;
@@ -3043,53 +3063,132 @@ viewPresetSelect.addEventListener('blur', () => {
 });
 
 
-// ---- view bar (cube icons) + interactive view cube ----
+// ---- view bar (cube icons) + interactive view cube (real rounded 3D cube) ----
 (function () {
   const bar = document.getElementById('viewbar');
+  const wrap = document.getElementById('view-cube');
   const cubeEl = document.getElementById('view-cube-inner');
-  if (!bar || !cubeEl) return;
+  if (!bar || !wrap || !cubeEl) return;
   bar.querySelectorAll('button[data-view]').forEach(b => {
     b.addEventListener('click', () => setPresetView(b.dataset.view));
   });
-  const H = 23;
-  // face: outward normal n, text-right u, text-down d (all world axes), preset name
-  const FACES = [
-    { t: 'FRONT',  v: 'front',  n: [0,-1,0], u: [1,0,0],  d: [0,0,-1] },
-    { t: 'BACK',   v: 'back',   n: [0,1,0],  u: [-1,0,0], d: [0,0,-1] },
-    { t: 'RIGHT',  v: 'right',  n: [1,0,0],  u: [0,1,0],  d: [0,0,-1] },
-    { t: 'LEFT',   v: 'left',   n: [-1,0,0], u: [0,-1,0], d: [0,0,-1] },
-    { t: 'TOP',    v: 'top',    n: [0,0,1],  u: [1,0,0],  d: [0,-1,0] },
-    { t: 'BOTTOM', v: 'bottom', n: [0,0,-1], u: [1,0,0],  d: [0,1,0] },
-  ];
-  const els = FACES.map(f => {
-    const e = document.createElement('div');
-    e.className = 'vc-face'; e.textContent = f.t; e.title = f.t.charAt(0) + f.t.slice(1).toLowerCase() + ' view';
-    e.addEventListener('click', () => setPresetView(f.v));
-    cubeEl.appendChild(e); return e;
-  });
-  const q = new THREE.Quaternion(), m = new THREE.Matrix4();
   const dirs = { diagonal: new THREE.Vector3(0.6,-0.9,0.6).normalize() };
   Object.keys(VIEW_PRESET_DIRS).forEach(k => { dirs[k] = new THREE.Vector3(...VIEW_PRESET_DIRS[k]).normalize(); });
   const btns = Array.from(bar.querySelectorAll('button[data-view]'));
+
+  // BoxGeometry material order (+x,-x,+y,-y,+z,-z) in a Y-up local frame; the mesh is then rotated so local +y = world +z
+  const LABELS = ['RIGHT', 'LEFT', 'TOP', 'BOTTOM', 'FRONT', 'BACK'];
+  const PRESETS = ['right', 'left', 'top', 'bottom', 'front', 'back'];
+  let gl = null;
+  try {
+    const SIZE = 84;
+    const canvas = document.createElement('canvas');
+    canvas.style.cssText = 'position:absolute;left:0;top:0;width:' + SIZE + 'px;height:' + SIZE + 'px;cursor:pointer;';
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(SIZE, SIZE, false);
+    renderer.setClearColor(0x000000, 0);
+    const cScene = new THREE.Scene();
+    const cCam = new THREE.OrthographicCamera(-1.35, 1.35, 1.35, -1.35, 0.1, 20);
+    // rounded box: segmented box, every vertex pushed onto a rounded-box surface
+    const HALF = 0.82, R = 0.24, INNER = HALF - R;
+    const geo = new THREE.BoxGeometry(HALF * 2, HALF * 2, HALF * 2, 14, 14, 14);
+    const pos = geo.attributes.position, v = new THREE.Vector3(), c = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i);
+      c.set(Math.max(-INNER, Math.min(INNER, v.x)), Math.max(-INNER, Math.min(INNER, v.y)), Math.max(-INNER, Math.min(INNER, v.z)));
+      v.sub(c);
+      if (v.lengthSq() > 1e-12) v.normalize().multiplyScalar(R);
+      v.add(c);
+      pos.setXYZ(i, v.x, v.y, v.z);
+    }
+    geo.computeVertexNormals();
+    function faceTexture(label, hot) {
+      const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+      const g = cv.getContext('2d');
+      g.fillStyle = hot ? '#4c8dff' : '#3a404c'; g.fillRect(0, 0, 128, 128);
+      g.fillStyle = hot ? '#ffffff' : '#e8ebf0';
+      g.font = '700 ' + (label.length > 5 ? 21 : 25) + 'px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif';
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(label, 64, 66);
+      const t = new THREE.CanvasTexture(cv); t.anisotropy = 4; return t;
+    }
+    const mats = LABELS.map(l => new THREE.MeshLambertMaterial({ map: faceTexture(l, false) }));
+    const hotMats = LABELS.map(l => faceTexture(l, true));
+    const coldMaps = mats.map(m => m.map);
+    const mesh = new THREE.Mesh(geo, mats);
+    mesh.rotation.x = Math.PI / 2;           // local +y (TOP) -> world +z
+    cScene.add(mesh);
+    cScene.add(new THREE.AmbientLight(0xffffff, 0.78));
+    const kl = new THREE.DirectionalLight(0xffffff, 0.55); kl.position.set(-2, -3, 4); cScene.add(kl);
+    wrap.insertBefore(canvas, wrap.firstChild);
+    cubeEl.style.display = 'none';
+    const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+    let hover = -1;
+    function pick(ev) {
+      const r = canvas.getBoundingClientRect();
+      ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+      ray.setFromCamera(ndc, cCam);
+      const hit = ray.intersectObject(mesh)[0];
+      return hit ? hit.face.materialIndex : -1;
+    }
+    function setHover(i) {
+      if (i === hover) return;
+      if (hover >= 0) mats[hover].map = coldMaps[hover], mats[hover].needsUpdate = true;
+      hover = i;
+      if (i >= 0) mats[i].map = hotMats[i], mats[i].needsUpdate = true;
+      canvas.style.cursor = i >= 0 ? 'pointer' : 'default';
+      draw();
+    }
+    canvas.addEventListener('pointermove', (e) => setHover(pick(e)));
+    canvas.addEventListener('pointerleave', () => setHover(-1));
+    canvas.addEventListener('click', (e) => { const i = pick(e); if (i >= 0) setPresetView(PRESETS[i]); });
+    const tmp = new THREE.Vector3();
+    function draw() {
+      cCam.quaternion.copy(camera.quaternion);
+      cCam.position.set(0, 0, 8).applyQuaternion(cCam.quaternion);
+      renderer.render(cScene, cCam);
+    }
+    gl = { draw };
+  } catch (err) {
+    gl = null;
+    console.warn('view cube: WebGL unavailable, using flat faces', err);
+  }
+  if (!gl) {
+    // fallback: flat CSS faces
+    const H = 23;
+    const FACES = [
+      { t: 'FRONT',  v: 'front',  n: [0,-1,0], u: [1,0,0],  d: [0,0,-1] },
+      { t: 'BACK',   v: 'back',   n: [0,1,0],  u: [-1,0,0], d: [0,0,-1] },
+      { t: 'RIGHT',  v: 'right',  n: [1,0,0],  u: [0,1,0],  d: [0,0,-1] },
+      { t: 'LEFT',   v: 'left',   n: [-1,0,0], u: [0,-1,0], d: [0,0,-1] },
+      { t: 'TOP',    v: 'top',    n: [0,0,1],  u: [1,0,0],  d: [0,-1,0] },
+      { t: 'BOTTOM', v: 'bottom', n: [0,0,-1], u: [1,0,0],  d: [0,1,0] },
+    ];
+    const els = FACES.map(f => {
+      const e = document.createElement('div');
+      e.className = 'vc-face'; e.textContent = f.t;
+      e.addEventListener('click', () => setPresetView(f.v));
+      cubeEl.appendChild(e); return e;
+    });
+    const q = new THREE.Quaternion(), m = new THREE.Matrix4();
+    gl = { draw: function () {
+      q.copy(camera.quaternion).invert(); m.makeRotationFromQuaternion(q);
+      const e = m.elements, r = [[e[0],e[4],e[8]],[e[1],e[5],e[9]],[e[2],e[6],e[10]]];
+      const cam = (v) => [ r[0][0]*v[0]+r[0][1]*v[1]+r[0][2]*v[2], -(r[1][0]*v[0]+r[1][1]*v[1]+r[1][2]*v[2]), r[2][0]*v[0]+r[2][1]*v[1]+r[2][2]*v[2] ];
+      FACES.forEach((f, i) => { const u = cam(f.u), d = cam(f.d), n = cam(f.n), t = n.map(x => x * H);
+        els[i].style.transform = 'matrix3d(' + [u[0],u[1],u[2],0, d[0],d[1],d[2],0, n[0],n[1],n[2],0, t[0],t[1],t[2],1].join(',') + ')'; });
+    } };
+  }
+  const qq = new THREE.Quaternion();
   let lastKey = '';
   window.updateViewCube = function () {
-    q.copy(camera.quaternion).invert();
-    m.makeRotationFromQuaternion(q);
-    const e = m.elements; // column-major, world -> camera
-    const key = e.slice(0, 11).map(x => x.toFixed(3)).join(',');
+    qq.copy(camera.quaternion);
+    const key = qq.x.toFixed(4) + ',' + qq.y.toFixed(4) + ',' + qq.z.toFixed(4) + ',' + qq.w.toFixed(4);
     if (key === lastKey) return; lastKey = key;
-    // r[row][col]
-    const r = [[e[0],e[4],e[8]],[e[1],e[5],e[9]],[e[2],e[6],e[10]]];
-    const cam = (v) => [ r[0][0]*v[0]+r[0][1]*v[1]+r[0][2]*v[2],
-                        -(r[1][0]*v[0]+r[1][1]*v[1]+r[1][2]*v[2]),   // y up -> css y down
-                         r[2][0]*v[0]+r[2][1]*v[1]+r[2][2]*v[2] ];
-    FACES.forEach((f, i) => {
-      const u = cam(f.u), d = cam(f.d), n = cam(f.n);
-      const t = n.map(x => x * H);
-      els[i].style.transform = 'matrix3d(' + [u[0],u[1],u[2],0, d[0],d[1],d[2],0, n[0],n[1],n[2],0, t[0],t[1],t[2],1].join(',') + ')';
-    });
-    const look = new THREE.Vector3(); camera.getWorldDirection(look); look.negate(); // from target toward camera
-    btns.forEach(b => { const v = dirs[b.dataset.view]; b.classList.toggle('vb-active', !!v && look.dot(v) > 0.9995); });
+    gl.draw();
+    const look = new THREE.Vector3(); camera.getWorldDirection(look); look.negate();
+    btns.forEach(b => { const d = dirs[b.dataset.view]; b.classList.toggle('vb-active', !!d && look.dot(d) > 0.9995); });
   };
   window.updateViewCube();
 })();
@@ -3250,15 +3349,15 @@ scene.add(headLight.target);
 const axesGroup = new THREE.Group();
 scene.add(axesGroup);
 
-const AXIS_COLOR = { x: 0xff5555, y: 0x4caf50, z: 0x4fc3f7 };
-const axisLines = {};
+const AXIS_TONE = { dark: '#1c1c1c', light: '#1c1c1c' };
+let axisToneCss = (document.documentElement.getAttribute('data-theme') === 'light') ? AXIS_TONE.light : AXIS_TONE.dark;
+const axisLines = {};     // per axis: { pos: solid line (+), neg: dotted line (-) } -- same convention as OpenSCAD's axes
 const tickGroups = {};
 for (const ax of ['x', 'y', 'z']) {
-  const line = new THREE.Line(
-    new THREE.BufferGeometry(),
-    new THREE.LineBasicMaterial({ color: AXIS_COLOR[ax] }));
-  axisLines[ax] = line;
-  axesGroup.add(line);
+  const pos = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: axisToneCss, depthTest: true }));
+  const neg = new THREE.Points(new THREE.BufferGeometry(), new THREE.PointsMaterial({ color: 0x7a7f88, size: 1.7, sizeAttenuation: false, depthTest: true }));   // negative half = a row of dots
+  axisLines[ax] = { pos, neg };
+  axesGroup.add(pos, neg);
   const g = new THREE.Group();
   tickGroups[ax] = g;
   axesGroup.add(g);
@@ -3275,14 +3374,33 @@ function makeLabelSprite(text, color, fontPx) {
   ctx.textBaseline = 'middle';
   ctx.fillText(text, 64, 34);
   const tex = new THREE.CanvasTexture(canvas);
-  const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false });
+  const mat = new THREE.SpriteMaterial({ map: tex, depthTest: true, depthWrite: false });
   const sprite = new THREE.Sprite(mat);
   sprite.renderOrder = 999;
   return sprite;
 }
+// Thin numeric tick label that LIES IN A PLANE along its axis (like OpenSCAD's scale markers),
+// instead of a camera-facing sprite.
+function makeAxisText(text, color) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256; canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = color;
+  ctx.font = '200 64px "Helvetica Neue", "HelveticaNeue-UltraLight", Helvetica, Arial, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, 128, 68);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.anisotropy = 4;
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: true, side: THREE.DoubleSide });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 1), mat);
+  mesh.renderOrder = 998;
+  return mesh;
+}
+// (the big X/Y/Z end-of-axis letters are gone -- OpenSCAD doesn't draw them; the corner indicator names the axes)
 const axisLabelX = makeLabelSprite('X', '#ff5555', 52);
 const axisLabelY = makeLabelSprite('Y', '#4caf50', 52);
 const axisLabelZ = makeLabelSprite('Z', '#4fc3f7', 52);
+for (const l of [axisLabelX, axisLabelY, axisLabelZ]) l.visible = false;
 axesGroup.add(axisLabelX, axisLabelY, axisLabelZ);
 
 let lastAxesStep = null;
@@ -3300,68 +3418,66 @@ function updateAxesScale(extent) {
   const norm = rawStep / mag;
   const niceNorm = norm < 1.5 ? 1 : norm < 3.5 ? 2 : norm < 7.5 ? 5 : 10;
   const step = niceNorm * mag;
+  // never lock in a degenerate step (see earlier history: NaN/<=0 would freeze the axis)
+  if (!(step > 0) || !isFinite(step)) return;
   if (step === lastAxesStep) return;
   lastAxesStep = step;
 
   const divisions = 20;
   const half = (step * divisions) / 2;
+  currentAxesHalf = half;
 
-  const AXIS_ENDS = {
-    x: [new THREE.Vector3(-half, 0, 0), new THREE.Vector3(half, 0, 0)],
-    y: [new THREE.Vector3(0, -half, 0), new THREE.Vector3(0, half, 0)],
-    z: [new THREE.Vector3(0, 0, -half), new THREE.Vector3(0, 0, half)],
-  };
-  const tickLen = step * 0.12;
-  const majorTickLen = tickLen * 1.7; // every tenth tick drawn larger, as in OpenSCAD
-  const decimals = Math.max(0, 2 - Math.floor(Math.log10(step)));
+  const u = step / 10;                 // one tick per tenth of a labelled step; every 5th/10th longer
+    const tone = axisToneCss;
+  const dirs = { x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] };
+  const decimals = Math.max(0, -Math.floor(Math.log10(step)));
+  const fmt = (v) => String(Number(v.toFixed(decimals)));
+  const labelH = step * 0.30;
   for (const ax of ['x', 'y', 'z']) {
-    axisLines[ax].geometry.dispose();
-    axisLines[ax].geometry = new THREE.BufferGeometry().setFromPoints(AXIS_ENDS[ax]);
+    const d = dirs[ax];
+    const P = (t) => new THREE.Vector3(d[0] * t, d[1] * t, d[2] * t);
+    const L = axisLines[ax];
+    for (const k of ['pos', 'neg']) { L[k].material.color.set(tone); }
+    L.pos.geometry.dispose(); L.pos.geometry = new THREE.BufferGeometry().setFromPoints([P(0), P(half)]);
+    const dots = []; const dn = 200;                       // one dot every step/20
+    for (let k = 1; k <= dn; k++) dots.push(P(-half * k / dn));
+    L.neg.geometry.dispose(); L.neg.geometry = new THREE.BufferGeometry().setFromPoints(dots);
 
     const g = tickGroups[ax];
     for (const child of [...g.children]) {
       if (child.geometry) child.geometry.dispose();
-      if (child.material) {
-        if (child.material.map) child.material.map.dispose();
-        child.material.dispose();
-      }
+      if (child.material) { if (child.material.map) child.material.map.dispose(); child.material.dispose(); }
       g.remove(child);
     }
-    const colorCss = '#' + AXIS_COLOR[ax].toString(16).padStart(6, '0');
-    const n = divisions / 2;
+    // all minor/mid/major ticks of this axis in ONE LineSegments
+    const pts = [];
+    const n = divisions * 5;           // 100 ticks each side
     for (let i = -n; i <= n; i++) {
       if (i === 0) continue;
+      const pos = i * u;
+      const len = (i % 10 === 0) ? step * 0.12 : (i % 5 === 0) ? step * 0.08 : step * 0.045;
+      // ticks lie in the ground plane (perpendicular to the axis); Z ticks run along X
+      // one-sided, like OpenSCAD: each tick starts ON the axis and extends to one side only (the label side)
+      let a, b;
+      if (ax === 'x') { a = new THREE.Vector3(pos, 0, 0); b = new THREE.Vector3(pos, len, 0); }
+      else if (ax === 'y') { a = new THREE.Vector3(0, pos, 0); b = new THREE.Vector3(-len, pos, 0); }
+      else { a = new THREE.Vector3(0, 0, pos); b = new THREE.Vector3(-len, 0, pos); }
+      pts.push(a, b);
+    }
+    g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: tone, depthTest: true })));
+    // numbers only on the major (every 10th) ticks, lying along the axis
+    const off = step * 0.12 + labelH * 0.6;
+    for (let i = -divisions / 2; i <= divisions / 2; i++) {
+      if (i === 0) continue;
       const pos = i * step;
-      const major = i % 10 === 0;
-      const len = major ? majorTickLen : tickLen;
-      let p1, p2, labelPos;
-      if (ax === 'x') {
-        p1 = new THREE.Vector3(pos, 0, -len); p2 = new THREE.Vector3(pos, 0, len);
-        labelPos = new THREE.Vector3(pos, 0, len * 2.2);
-      } else if (ax === 'y') {
-        p1 = new THREE.Vector3(0, pos, -len); p2 = new THREE.Vector3(0, pos, len);
-        labelPos = new THREE.Vector3(0, pos, len * 2.2);
-      } else {
-        p1 = new THREE.Vector3(-len, 0, pos); p2 = new THREE.Vector3(len, 0, pos);
-        labelPos = new THREE.Vector3(len * 2.2, 0, pos);
-      }
-      const tickGeo = new THREE.BufferGeometry().setFromPoints([p1, p2]);
-      const tick = new THREE.Line(tickGeo, new THREE.LineBasicMaterial({ color: AXIS_COLOR[ax] }));
-      g.add(tick);
-
-      const label = makeLabelSprite(pos.toFixed(decimals), colorCss, 34);
-      const s = step * 0.22;
-      label.scale.set(s * 2, s, 1);
-      label.position.copy(labelPos);
-      g.add(label);
+      const m = makeAxisText(fmt(pos), tone);
+      m.scale.set(labelH, labelH, 1);   // plane is 2x1 -> labelH*2 wide, labelH tall
+      if (ax === 'x') { m.position.set(pos, off, 0); }
+      else if (ax === 'y') { m.rotation.z = Math.PI / 2; m.position.set(-off, pos, 0); }
+      else { m.rotation.set(Math.PI / 2, 0, Math.PI / 2, 'XYZ'); m.position.set(-off, 0, pos); }
+      g.add(m);
     }
   }
-
-  const s = Math.max(half * 0.12, 0.001);
-  axisLabelX.position.set(half * 1.15, 0, 0);
-  axisLabelY.position.set(0, half * 1.15, 0);
-  axisLabelZ.position.set(0, 0, half * 1.15);
-  for (const lbl of [axisLabelX, axisLabelY, axisLabelZ]) lbl.scale.set(s, s, s);
 }
 updateAxesScale(200);
 
@@ -3386,40 +3502,42 @@ function maybeUpdateAxesScale() {
 const gizmoCanvas = document.getElementById('axis-gizmo');
 const gizmoCtx = gizmoCanvas.getContext('2d');
 const GIZMO_AXES = [
-  { name: 'X', color: '#ff5555', dir: new THREE.Vector3(1, 0, 0) },
-  { name: 'Y', color: '#4caf50', dir: new THREE.Vector3(0, 1, 0) },
-  { name: 'Z', color: '#4fc3f7', dir: new THREE.Vector3(0, 0, 1) },
+  { name: 'x', color: '#e53935', dir: new THREE.Vector3(1, 0, 0) },
+  { name: 'y', color: '#43a047', dir: new THREE.Vector3(0, 1, 0) },
+  { name: 'z', color: '#1e63e9', dir: new THREE.Vector3(0, 0, 1) },
 ];
 
+// OpenSCAD-style corner marker: three thin coloured lines + small lowercase letters at the tips.
 function drawAxisGizmo() {
   const w = gizmoCanvas.width, h = gizmoCanvas.height;
   gizmoCtx.clearRect(0, 0, w, h);
-  const cx = w / 2, cy = h / 2, r = Math.min(w, h) * 0.38;
+  const cx = w / 2, cy = h / 2, r = Math.min(w, h) * 0.34;
   const invQuat = camera.quaternion.clone().invert();
-  for (const { name, color, dir } of GIZMO_AXES) {
-    const v = dir.clone().applyQuaternion(invQuat); // camera-space direction
-    const x = cx + v.x * r;
-    const y = cy - v.y * r; // canvas y grows downward
-    const behind = v.z > 0; // pointing away from the viewer
-    gizmoCtx.strokeStyle = color;
-    gizmoCtx.lineWidth = 2;
-    gizmoCtx.globalAlpha = behind ? 0.35 : 1;
-    gizmoCtx.beginPath();
-    gizmoCtx.moveTo(cx, cy);
-    gizmoCtx.lineTo(x, y);
-    gizmoCtx.stroke();
-    gizmoCtx.beginPath();
-    gizmoCtx.arc(x, y, 7, 0, Math.PI * 2);
-    gizmoCtx.fillStyle = color;
-    gizmoCtx.fill();
+  const items = GIZMO_AXES.map(a => ({ a, v: a.dir.clone().applyQuaternion(invQuat) }));
+  items.sort((p, q) => q.v.z - p.v.z);     // far ones first so near lines/letters draw on top
+  for (const { a, v } of items) {
+    const x = cx + v.x * r, y = cy - v.y * r;
+    const behind = v.z > 0.05;
+    gizmoCtx.globalAlpha = behind ? 0.55 : 1;
+    gizmoCtx.strokeStyle = a.color;
+    gizmoCtx.lineWidth = 1.6;
+    gizmoCtx.beginPath(); gizmoCtx.moveTo(cx, cy); gizmoCtx.lineTo(x, y); gizmoCtx.stroke();
+    const len = Math.hypot(x - cx, y - cy) || 1;
+    const lx = x + (x - cx) / len * 8, ly = y + (y - cy) / len * 8;
+    gizmoCtx.fillStyle = a.color;
+    gizmoCtx.font = '400 12px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    gizmoCtx.textAlign = 'center'; gizmoCtx.textBaseline = 'middle';
+    gizmoCtx.fillText(a.name, lx, ly);
     gizmoCtx.globalAlpha = 1;
-    gizmoCtx.fillStyle = behind ? 'rgba(255,255,255,0.6)' : '#fff';
-    gizmoCtx.font = 'bold 11px -apple-system, sans-serif';
-    gizmoCtx.textAlign = 'center';
-    gizmoCtx.textBaseline = 'middle';
-    gizmoCtx.fillText(name, x, y);
   }
 }
+
+// keep the axis tone readable on either theme
+window.addEventListener('sp-theme-change', (e) => {
+  axisToneCss = (e.detail === 'light') ? AXIS_TONE.light : AXIS_TONE.dark;
+  lastAxesStep = null;           // force a rebuild with the new colour on the next frame
+  try { maybeUpdateAxesScale(); } catch (err) {}
+});
 
 document.getElementById('axes-toggle').addEventListener('change', (e) => {
   axesGroup.visible = e.target.checked;
