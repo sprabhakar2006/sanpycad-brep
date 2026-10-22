@@ -1040,6 +1040,7 @@ body.sp-dragging, body.sp-dragging * { cursor:grabbing !important; user-select:n
     </div>
     <div class="tb-group g-panels">
       <button id="btn-reference" title="Browse a searchable reference of every function's documentation"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5"/></svg><span class="lbl">Reference</span></button>
+      <button id="btn-palette" title="Find a function by what you want to do (Cmd/Ctrl+K)" onclick="window.openFunctionPalette&&window.openFunctionPalette()"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.2-4.2"/></svg><span class="lbl">Find function</span></button>
       <button id="btn-vars" title="List every variable your script assigns (or that's otherwise in memory), with checkboxes to preview it as a line/points in the 3D view, and Overwrite/Delete actions on its in-memory value."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span class="lbl">Variables</span></button>
       <button id="btn-sketch2d" title="Draw a 2D profile on a canvas (arcs, fillets, offset, trim, ...) and send it into this window's Python memory as a real variable -- polygon(sec)/linear_extrude(polygon(sec), h=...) etc. Needs ocad.py's own dependencies (scipy, sympy, scikit-image) installed."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4-1L19 8l-3-3L5 16z"/></svg><span class="lbl">2D Sketch</span></button>
       <button id="btn-exchange" title="Port a SanPyCAD (mesh app) script into SanPyCAD-Brep by prefixing its ocad function calls with o."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg><span class="lbl">Exchange</span></button>
@@ -1618,6 +1619,7 @@ const cm = CodeMirror.fromTextArea(document.getElementById('editor'), {
   }
 });
 cm.setValue(DEFAULT_PYTHON_SCRIPT);
+window.cm = cm;
 // "Send to SanPyCAD-Brep" handoff: if the sibling SanPyCAD app just
 // launched this very process with a shape to import (see app.py's
 // _pending_import_from_env()/set_pending_import()), GET /pending_import
@@ -1845,6 +1847,7 @@ async function loadFunctionNames() {
       pythonFunctionDocs[f.name] = f.doc || '';
       pythonFunctionOrigins[f.name] = f.origin || 'library';
     }
+    window.__spFn = { docs: pythonFunctionDocs, origins: pythonFunctionOrigins };
     const o4Items = data.openscad4_functions || [];
     pythonOpenscad4Names = o4Items.map((f) => f.name);
     pythonOpenscad4Docs = {};
@@ -10310,5 +10313,370 @@ renderScene();
     box-shadow: 0 0 2px rgba(255, 59, 48, 0.8);
   }
 </style>
+<!-- FUNCTION PALETTE (Cmd/Ctrl+K) -->
+<style>
+  #fp-overlay { position: fixed; inset: 0; z-index: 99990; display: none; align-items: flex-start; justify-content: center; padding-top: 9vh; background: rgba(0,0,0,0.38); }
+  #fp-overlay.open { display: flex; }
+  #fp-box { width: min(760px, 92vw); max-height: 74vh; display: flex; flex-direction: column; background: var(--panel-bg-2); color: var(--text); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  #fp-input { border: 0; border-bottom: 1px solid var(--border); background: transparent; color: var(--text); padding: 14px 16px; font-size: 15px; outline: none; }
+  #fp-body { display: flex; min-height: 0; flex: 1; }
+  #fp-list { flex: 1.25; overflow-y: auto; min-width: 0; padding: 4px 0; }
+  #fp-preview { flex: 1; overflow-y: auto; border-left: 1px solid var(--border); padding: 10px 12px; font: 11.5px/1.45 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; color: var(--muted); }
+  .fp-cat { padding: 8px 14px 3px; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .fp-item { padding: 6px 14px; cursor: pointer; display: block; }
+  .fp-item.sel, .fp-item:hover { background: var(--hover); }
+  .fp-item.sel { box-shadow: inset 3px 0 0 var(--accent); }
+  .fp-name { font-weight: 600; font-size: 13px; }
+  .fp-sig { color: var(--muted); font: 11px ui-monospace, Menlo, Consolas, monospace; margin-left: 6px; }
+  .fp-desc { color: var(--muted); font-size: 12px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fp-tag { float: right; font-size: 10px; padding: 1px 6px; border-radius: 8px; background: var(--chip-bg); color: var(--muted); margin-left: 8px; }
+  #fp-foot { border-top: 1px solid var(--border); padding: 5px 14px; font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; }
+  .fp-item.rec .fp-name { color: var(--accent); }
+  .fp-empty { padding: 18px 16px; color: var(--muted); font-size: 13px; }
+</style>
+<div id="fp-overlay"><div id="fp-box">
+  <input id="fp-input" type="text" placeholder="What do you want to do?  e.g. round a corner, offset, sweep, hole, boolean…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+  <div id="fp-body"><div id="fp-list"></div><div id="fp-preview"></div></div>
+  <div id="fp-foot"><span>&uarr;&darr; choose &nbsp; Enter insert &nbsp; Esc close</span><span id="fp-count"></span></div>
+</div></div>
+<script>
+(function () {
+  // Task-oriented metadata for the functions people reach for most --
+  // category, a plain-language "when to use", and aliases (words people
+  // actually type). Anything not listed still shows up, searched via its
+  // name + docstring. Names not present in the running app are ignored.
+  const META = {
+    cube: ['Create', 'Box / cuboid solid', 'box block rectangle cuboid brick'],
+    sphere: ['Create', 'Sphere solid', 'ball round'],
+    cylinder: ['Create', 'Cylinder or cone solid', 'tube rod pipe cone shaft hole pin'],
+    circle: ['Create', '2D circle profile (for extrude / sweep)', 'round disc ring'],
+    square: ['Create', '2D rectangle profile', 'rectangle box 2d'],
+    helix: ['Create', 'Helix / spring path', 'spring coil screw thread spiral'],
+    bezier: ['Create', 'Smooth Bezier curve through control points', 'curve spline smooth'],
+    cir_3p: ['Create', 'Circle through 3 points', 'circle three points'],
+    prism: ['Sweep & extrude', 'Extrude/stack a 2D section along a path into a solid', 'extrude loft pull sweep thick wall'],
+    linear_extrude: ['Sweep & extrude', 'Extrude a 2D shape straight up', 'extrude pull height thicken'],
+    extrude_on_plane: ['Sweep & extrude', 'Extrude a sketch drawn on a plane/face', 'sketch on face extrude boss pad'],
+    sweep_sec2path: ['Sweep & extrude', 'Sweep a section along a path (pipe, rail, handle)', 'pipe sweep rail handle tube follow path'],
+    sweep_placed_sec2path: ['Sweep & extrude', 'Sweep a 3D-placed section along a path', 'sweep pipe placed section'],
+    swp: ['Sweep & extrude', 'Turn a stack of sections into an open solid for display', 'sweep surface display loft'],
+    swp_c: ['Sweep & extrude', 'Same as swp but closes the loop', 'closed sweep loop ring'],
+    swp_surf: ['Sweep & extrude', 'Display a grid of points as a surface', 'surface patch grid'],
+    union: ['Boolean', 'Join shapes into one', 'add merge combine join weld fuse'],
+    difference: ['Boolean', 'Subtract shapes (cut a hole / pocket)', 'subtract cut hole pocket remove drill'],
+    intersection: ['Boolean', 'Keep only the overlap of shapes', 'common overlap intersect and'],
+    hull: ['Boolean', 'Convex hull wrapped around shapes', 'wrap envelope convex'],
+    translate: ['Move & rotate', 'Move a shape by [x,y,z]', 'move shift offset position'],
+    rot: ['Move & rotate', 'Rotate a shape about an axis', 'rotate turn spin angle'],
+    xrot: ['Move & rotate', 'Rotate about X', 'rotate x'],
+    yrot: ['Move & rotate', 'Rotate about Y', 'rotate y'],
+    zrot: ['Move & rotate', 'Rotate about Z', 'rotate z'],
+    fillet: ['Fillet & round', 'Round selected edges of a solid with a radius', 'round edge corner blend smooth radius'],
+    chamfer: ['Fillet & round', 'Bevel selected edges', 'bevel edge corner cut'],
+    fillet_by_offset: ['Fillet & round', 'Fillet along any line between two solids, or round a corner of ONE solid; use when fillet() fails', 'round corner blend between solids intersection same solid edge line auto_dir'],
+    suggest_fillet_dir: ['Fillet & round', 'Tells you the right +/- sign for fillet_by_offset radii', 'fillet direction sign side flip wrong side'],
+    fillet3points: ['Fillet & round', '2D rounded corner through 3 points', 'round corner 2d arc'],
+    convert_3lines2fillet: ['Fillet & round', 'Build a fillet grid from spine + two blend lines', 'blend grid fillet lines'],
+    solid_from_fillet: ['Fillet & round', 'Thicken a fillet grid into a solid', 'fillet solid thicken'],
+    solid_from_fillet_closed: ['Fillet & round', 'Same, for a closed loop fillet', 'fillet solid loop'],
+    o_3d: ['Offset', 'Offset a line along a surface/solid by distance r', 'offset line on surface parallel'],
+    o_3dc: ['Offset', 'o_3d with self-intersection cleanup', 'offset clean loops kinks'],
+    offset_solid: ['Offset', 'Grow/shrink a solid by a distance (shell, clearance)', 'thicken shell grow shrink wall clearance'],
+    offset_solid_closed: ['Offset', 'Offset a closed solid', 'thicken shell grow shrink'],
+    offset_3d: ['Offset', 'Offset a 3D line by a distance', 'offset line 3d'],
+    path_offset3d: ['Offset', 'Offset a 3D path sideways', 'offset path parallel'],
+    offset: ['Offset', '2D offset of a profile', 'grow shrink outline inset outset 2d'],
+    ip_sol2sol: ['Intersection & slicing', 'Intersection line where two solids meet', 'seam intersection curve between solids'],
+    two_solids_intersection: ['Intersection & slicing', 'Raw intersection segments of two solids', 'intersection seam'],
+    contiguous_chains: ['Intersection & slicing', 'Group intersection segments into connected lines', 'chain connect join segments'],
+    cpo: ['Intersection & slicing', 'Closest point on a solid/surface', 'closest nearest point'],
+    nlos: ['Intersection & slicing', 'Project points onto a surface/solid', 'project snap nearest surface'],
+    points_inside_solid: ['Intersection & slicing', 'Which points are inside a solid', 'inside test contains'],
+    plane: ['Intersection & slicing', 'Define a plane from a normal and point', 'plane normal'],
+    surface_from_4_lines: ['Surfaces', 'Patch bounded by four lines', 'surface patch coons boundary'],
+    solid_from_2surfaces: ['Surfaces', 'Close two surfaces into a solid', 'solid between surfaces'],
+    equidistant_path: ['Lines & paths', 'Resample a line to evenly spaced points', 'resample even spacing homogenise points'],
+    equidistant_pathc: ['Lines & paths', 'Same for a closed loop', 'resample even spacing loop'],
+    fit_pline2line: ['Lines & paths', 'Fit a straight line through a polyline', 'straighten fit line'],
+    cir_p_t: ['2D tangents', 'Tangent from a point to a circle', 'tangent circle point'],
+    convex_hull: ['2D tools', '2D convex hull of points', 'wrap outline'],
+    concave_hull: ['2D tools', '2D concave hull of points', 'wrap outline tight'],
+    show: ['Display & export', 'Display shapes in the 3D view', 'display render view'],
+    export_step: ['Display & export', 'Export the model as STEP', 'save step cad export'],
+    import_step: ['Display & export', 'Import a STEP file', 'load open step cad'],
+    label_edges: ['Display & export', 'Show edge index numbers in the 3D view', 'edge numbers index pick'],
+    label_faces: ['Display & export', 'Show face index numbers in the 3D view', 'face numbers index pick'],
+    wire_from_edges: ['Lines & paths', 'Join edges into one wire', 'chain edges join'],
+    sample_curve: ['Lines & paths', 'Sample an edge/wire into points', 'discretize points curve'],
+    thicken: ['Surfaces', 'Give a surface/face thickness', 'shell thicken solidify'],
+    offset_face: ['Offset', 'Offset a face along its normal', 'push pull face'],
+    c23: ['Lines & paths', 'Convert 2D points to 3D', '2d to 3d lift'],
+    triangulate_solid_open: ['Mesh', 'Triangulate a solid into triangles', 'mesh triangles tessellate'],
+  };
+
+  // "use when" / "if that fails" one-liners shown above the docstring.
+  const HINTS = {
+    fillet: ['Rounds selected edges of ONE solid with a radius. Pick edges with Pick Edges/Faces.', 'If it errors or the corner is complex, use fillet_by_offset() with a line along the edge.'],
+    chamfer: ['Bevels selected edges (flat cut instead of a round).', 'If it errors, try a smaller distance, or fillet_by_offset().'],
+    fillet_by_offset: ['A blend along ANY line: between two solids (pipe into plate) or a corner of ONE solid (pass the same solid twice).', 'Wrong side? add auto_dir=1 (or call suggest_fillet_dir). Jagged? raise s or resample the line with equidistant_path().'],
+    suggest_fillet_dir: ['Tells you the +/- sign for r1/r2 so the fillet lands on the right side. Prints its suggestion.', 'Or just pass auto_dir=1 to fillet_by_offset().'],
+    convert_3lines2fillet: ['Low-level: builds the fillet grid from a spine and two blend lines. fillet_by_offset() calls it for you.', 'Prefer fillet_by_offset() unless you already have the three lines.'],
+    difference: ['Subtracts the other shapes from the first: holes, pockets, slots.', 'Make the cutter a bit longer than the part so no thin skin is left.'],
+    union: ['Joins shapes into one solid.', 'If parts only touch at a face, overlap them slightly first.'],
+    intersection: ['Keeps only the volume where shapes overlap.', ''],
+    ip_sol2sol: ['The line where two solids meet: the input line for fillet_by_offset().', 'Two or more separate seams? use two_solids_intersection() + contiguous_chains() and pick one.'],
+    two_solids_intersection: ['Raw intersection segments of two solids.', 'Group them into lines with contiguous_chains().'],
+    contiguous_chains: ['Connects intersection segments into continuous lines; pick the one you want.', ''],
+    o_3d: ['Offsets a line sideways along a surface/solid by r.', 'Wrong side? flip the sign of r. Kinks at tight bends? use o_3dc().'],
+    o_3dc: ['o_3d() plus cleanup of small loops where the offset is bigger than the local curvature.', ''],
+    offset_solid: ['Grows (+) or shrinks (-) a whole solid by a distance: shells, clearances.', 'Closed loops: offset_solid_closed().'],
+    equidistant_path: ['Resamples a line to evenly spaced points; smoother fillets and sweeps.', 'Closed loop? use equidistant_pathc().'],
+    prism: ['Builds a solid from a 2D section moved along a path.', 'Section self-crosses? simplify it or sweep with sweep_sec2path().'],
+    sweep_sec2path: ['Sweeps a section along a path: pipes, rails, handles.', 'Twists or flips? check the section is placed square to the path start.'],
+    extrude_on_plane: ['Extrudes a sketch drawn on a plane or face.', 'Negative height pulls the other way.'],
+    surface_from_4_lines: ['A surface patch bounded by four lines.', 'The lines must meet at their ends.'],
+    swp: ['Shows a stack of sections as a surface/solid (display helper).', 'Closed loops: swp_c().'],
+    nlos: ['Projects points onto the nearest point of a surface/solid.', ''],
+    points_inside_solid: ['Tells which points lie inside a solid.', ''],
+    wire_from_edges: ['Joins picked edges into one wire.', 'Edges must form a connected chain.'],
+  };
+
+  // Goal recipes: words people type -> the functions to reach for, in order.
+  // `need`: only shown when those functions exist in this app. `code`: starter snippet.
+  const RECIPES = [
+    { goal: 'Round or bevel an edge of a solid', words: 'round bevel edge corner fillet chamfer smooth radius soften', need: ['fillet_by_offset'],
+      steps: [['fillet', 'first choice: rounds the edges you picked'], ['chamfer', 'a flat bevel instead of a round'], ['fillet_by_offset', 'when fillet() fails or you need a blend along a line']],
+      code: '# edges picked with Pick Edges/Faces -> e1\nc = fillet(c, e1, 2)\n# if fillet() fails: blend along a line on the edge\n# f1 = fillet_by_offset(line, c, c, 2, auto_dir=1)\n' },
+    { goal: 'Round a corner of ONE solid along a line', words: 'round corner same solid line edge loop top edge fillet', need: ['fillet_by_offset'],
+      steps: [['fillet_by_offset', 'pass the same solid twice, the line along the edge'], ['equidistant_path', 'optional: resample the line for a smoother blend']],
+      code: 'f1 = fillet_by_offset(line, s1, s1, 1, auto_dir=1, closed_loop=1)\n' },
+    { goal: 'Fillet between two solids (pipe into plate, boss on wall)', words: 'fillet blend between two solids pipe plate boss wall junction join round intersection', need: ['fillet_by_offset'],
+      steps: [['ip_sol2sol', 'the line where they meet'], ['suggest_fillet_dir', 'which side the blend goes'], ['fillet_by_offset', 'builds the blend']],
+      code: 'il = ip_sol2sol(a, b)   # the seam line\nf1 = fillet_by_offset(il, a, b, 2, auto_dir=1)\n' },
+    { goal: 'Make a hole or cut a pocket', words: 'hole cut pocket subtract slot drill remove cavity', need: ['difference'],
+      steps: [['cylinder', 'make the cutter'], ['difference', 'subtract it from the part']],
+      code: 'cutter = cylinder(r=3, h=30, center=True)\npart = difference(part, cutter)\n' },
+    { goal: 'Join or merge parts', words: 'join merge combine add weld fuse union attach', need: ['union'],
+      steps: [['union', 'one solid from several']],
+      code: 'part = union(a, b)\n' },
+    { goal: 'Keep only the overlap of two shapes', words: 'overlap common intersect intersection both', need: ['intersection'],
+      steps: [['intersection', 'volume shared by both']],
+      code: 'part = intersection(a, b)\n' },
+    { goal: 'Find where two solids meet (seam line)', words: 'where meet seam intersection line curve edge between two solids', need: ['ip_sol2sol'],
+      steps: [['ip_sol2sol', 'the seam line'], ['two_solids_intersection', 'raw segments if there are several seams'], ['contiguous_chains', 'group segments into lines; pick one']],
+      code: 'il = ip_sol2sol(a, b)\n' },
+    { goal: 'Offset, shell or thicken a solid', words: 'offset shell thicken grow shrink wall clearance hollow inset', need: ['offset_solid'],
+      steps: [['offset_solid', 'grow or shrink a whole solid'], ['offset_solid_closed', 'for closed loops']],
+      code: 'bigger = offset_solid(s1, 1)\n' },
+    { goal: 'Offset a line along a surface', words: 'offset line surface parallel sideways along', need: ['o_3d'],
+      steps: [['o_3d', 'offset by r (flip sign for the other side)'], ['o_3dc', 'same, with kink cleanup']],
+      code: 'l2 = o_3d(line, solid, 2)\n' },
+    { goal: 'Sweep a profile along a path (pipe, rail, handle)', words: 'sweep pipe rail tube handle path along profile section extrude', need: ['sweep_sec2path'],
+      steps: [['sweep_sec2path', 'section along a path'], ['prism', 'extrude/stack a section'], ['equidistant_path', 'resample the path first for smoothness']] },
+    { goal: 'Extrude a 2D profile', words: 'extrude profile 2d sketch height pull boss pad', need: ['linear_extrude'],
+      steps: [['linear_extrude', 'straight up'], ['extrude_on_plane', 'sketch drawn on a plane/face'], ['prism', 'along a path']] },
+    { goal: 'Even out or resample a line', words: 'resample even spacing points homogenise smooth line path', need: ['equidistant_path'],
+      steps: [['equidistant_path', 'evenly spaced points'], ['equidistant_pathc', 'for a closed loop']],
+      code: 'line = equidistant_path(line, 60)\n' },
+    { goal: 'Make a surface from boundary lines', words: 'surface patch boundary lines four coons skin', need: ['surface_from_4_lines'],
+      steps: [['surface_from_4_lines', 'four lines meeting at their ends'], ['solid_from_2surfaces', 'close two surfaces into a solid']] },
+    { goal: 'Wrong side of a fillet? Get the right sign', words: 'fillet wrong side direction sign flip auto', need: ['suggest_fillet_dir'],
+      steps: [['suggest_fillet_dir', 'prints the +/- for r1, r2'], ['fillet_by_offset', 'or just pass auto_dir=1']],
+      code: 'r1, r2 = suggest_fillet_dir(il, a, b, 2)\nf1 = fillet_by_offset(il, a, b, r1, r2)\n' },
+    { goal: 'Export or save the result', words: 'export save step stl file output', need: ['export_step'],
+      steps: [['export_step', 'write a STEP file']] },
+  ];
+  const CATS = ['Create', 'Boolean', 'Move & rotate', 'Fillet & round', 'Offset', 'Sweep & extrude',
+                'Intersection & slicing', 'Surfaces', 'Lines & paths', '2D tangents', '2D tools',
+                'Display & export', 'Mesh'];
+
+  const ov = document.getElementById('fp-overlay');
+  const input = document.getElementById('fp-input');
+  const listEl = document.getElementById('fp-list');
+  const prevEl = document.getElementById('fp-preview');
+  const countEl = document.getElementById('fp-count');
+  let entries = [], shown = [], sel = 0;
+
+  function build() {
+    const docs = (window.__spFn && window.__spFn.docs) || {};
+    const orig = (window.__spFn && window.__spFn.origins) || {};
+    entries = [];
+    for (const name of Object.keys(docs)) {
+      if (orig[name] === 'external') continue;
+      const doc = docs[name] || '';
+      if (!doc) continue;
+      const lines = doc.split('\n').map((s) => s.trim());
+      const sig = /^[\w.]+\(.*\)/.test(lines[0]) ? lines[0].slice(name.length) : '';
+      const firstText = lines.find((l, i) => i > 0 && l && !/^[\w.]+\(.*\)/.test(l)) || '';
+      const m = META[name];
+      entries.push({
+        name, doc, sig: sig.length > 60 ? sig.slice(0, 57) + '…)' : sig,
+        cat: m ? m[0] : '', desc: m ? m[1] : firstText, alias: m ? m[2] : '',
+        curated: !!m, hint: HINTS[name] || null,
+        hay: (name + ' ' + (m ? m.join(' ') : '') + ' ' + doc).toLowerCase(),
+      });
+    }
+  }
+
+  function score(e, toks, q) {
+    const n = e.name.toLowerCase();
+    let s = 0;
+    if (n === q) s += 1000;
+    else if (n.startsWith(q)) s += 600;
+    else if (n.includes(q)) s += 400;
+    for (const t of toks) {
+      let ts = 0;
+      if (n === t) ts = 300;
+      else if (n.startsWith(t)) ts = 200;
+      else if (n.includes(t)) ts = 140;
+      else if (e.alias.toLowerCase().split(/\s+/).some((a) => a === t || a.startsWith(t))) ts = 120;
+      else if ((e.cat + ' ' + e.desc).toLowerCase().includes(t)) ts = 90;
+      else if (e.hay.includes(t)) ts = 25;
+      else {  // subsequence fuzzy on the name (typos / abbreviations)
+        let i = 0; for (const ch of n) if (ch === t[i]) i++;
+        if (i === t.length && t.length >= 3) ts = 15; else return -1;
+      }
+      s += ts;
+    }
+    if (e.curated) s += 30;
+    return s - Math.min(e.name.length, 40) * 0.1;
+  }
+
+  function recipeEntry(r) {
+    const have = new Set(entries.map((e) => e.name));
+    const steps = r.steps.filter((st) => have.has(st[0]));
+    return { recipe: true, name: r.goal, sig: '', desc: steps.map((st) => st[0]).join('  \u2192  '), r, steps };
+  }
+  function recipeScore(r, toks) {
+    const words = (r.goal + ' ' + r.words).toLowerCase().split(/\s+/);
+    let s = 0;
+    for (const t of toks) {
+      if (words.some((w) => w === t)) s += 10;
+      else if (t.length >= 3 && words.some((w) => w.startsWith(t) || (t.length >= 4 && w.includes(t)))) s += 5;
+    }
+    return s;
+  }
+
+  function render() {
+    const q = input.value.trim().toLowerCase();
+    listEl.innerHTML = '';
+    const have = new Set(entries.map((e) => e.name));
+    const recs = RECIPES.filter((r) => r.need.every((n) => have.has(n)));
+    if (!q) {
+      shown = [];
+      if (recs.length) {
+        shown.push({ header: 'Common goals' });
+        recs.forEach((r) => shown.push(recipeEntry(r)));
+      }
+      for (const c of CATS) {
+        const grp = entries.filter((e) => e.cat === c).sort((a, b) => a.name.localeCompare(b.name));
+        if (!grp.length) continue;
+        shown.push({ header: c });
+        grp.forEach((e) => shown.push(e));
+      }
+      countEl.textContent = 'Popular by task — or start typing';
+    } else {
+      const toks = q.split(/\s+/).filter(Boolean);
+      const rs = recs.map((r) => [recipeScore(r, toks), r]).filter((x) => x[0] > 0)
+        .sort((a, b) => b[0] - a[0]).slice(0, 3).map((x) => recipeEntry(x[1]));
+      const fs = entries.map((e) => [score(e, toks, q), e]).filter((x) => x[0] > 0)
+        .sort((a, b) => b[0] - a[0]).slice(0, 40).map((x) => x[1]);
+      shown = [];
+      if (rs.length) { shown.push({ header: 'Suggested approach' }); rs.forEach((r) => shown.push(r)); }
+      if (fs.length) { if (rs.length) shown.push({ header: 'Functions' }); fs.forEach((f) => shown.push(f)); }
+      const nres = shown.filter((x) => !x.header).length;
+      countEl.textContent = nres + ' match' + (nres === 1 ? '' : 'es');
+    }
+    if (!shown.some((x) => !x.header)) {
+      listEl.innerHTML = '<div class="fp-empty">' + (entries.length ? 'No match. Try other words, e.g. "round", "cut", "offset".' : 'Functions are still loading…') + '</div>';
+      prevEl.textContent = '';
+      return;
+    }
+    sel = shown.findIndex((x) => !x.header);
+    shown.forEach((x, i) => {
+      if (x.header) { const h = document.createElement('div'); h.className = 'fp-cat'; h.textContent = x.header; listEl.appendChild(h); return; }
+      const d = document.createElement('div'); d.className = 'fp-item' + (x.recipe ? ' rec' : ''); d.dataset.i = i;
+      const tag = x.recipe ? '<span class="fp-tag">goal</span>' : ((q && x.cat) ? '<span class="fp-tag">' + x.cat + '</span>' : '');
+      d.innerHTML = tag + '<span class="fp-name"></span><span class="fp-sig"></span><div class="fp-desc"></div>';
+      d.querySelector('.fp-name').textContent = x.name;
+      d.querySelector('.fp-sig').textContent = x.sig;
+      d.querySelector('.fp-desc').textContent = x.desc;
+      d.addEventListener('mousemove', () => { if (sel !== i) { sel = i; mark(false); } });
+      d.addEventListener('click', () => { sel = i; choose(); });
+      listEl.appendChild(d);
+    });
+    mark(true);
+  }
+
+  function mark(scroll) {
+    listEl.querySelectorAll('.fp-item').forEach((el) => el.classList.toggle('sel', +el.dataset.i === sel));
+    const e = shown[sel];
+    if (!e || e.header) prevEl.textContent = '';
+    else if (e.recipe) {
+      prevEl.textContent = e.name + '\n\nSteps:\n' + e.steps.map((st, i) => (i + 1) + '. ' + st[0] + ' \u2014 ' + st[1]).join('\n')
+        + (e.r.code ? '\n\nEnter inserts:\n' + e.r.code : '\n\nEnter inserts ' + (e.steps[0] ? e.steps[0][0] + '()' : '') + ' \u2014 then Shift+Tab for its docs.');
+    } else {
+      prevEl.textContent = (e.hint ? 'USE WHEN: ' + e.hint[0] + (e.hint[1] ? '\nIF THAT FAILS: ' + e.hint[1] : '') + '\n\n' : '') + e.doc;
+    }
+    if (scroll) {
+      const el = listEl.querySelector('.fp-item.sel');
+      if (el) el.scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  function move(dir) {
+    let i = sel;
+    do { i += dir; } while (shown[i] && shown[i].header);
+    if (shown[i] && !shown[i].header) { sel = i; mark(true); }
+  }
+
+  function open() {
+    if (!entries.length) build();
+    ov.classList.add('open');
+    input.value = '';
+    render();
+    input.focus();
+  }
+  function close() { ov.classList.remove('open'); if (window.cm) window.cm.focus(); }
+
+  function choose() {
+    const e = shown[sel];
+    if (!e || e.header) return;
+    close();
+    if (e.recipe) {
+      const ed0 = window.cm;
+      if (e.r.code) { ed0.replaceSelection(e.r.code); }
+      else if (e.steps[0]) { ed0.replaceSelection(e.steps[0][0] + '()'); const c0 = ed0.getCursor(); ed0.setCursor({ line: c0.line, ch: c0.ch - 1 }); }
+      ed0.focus();
+      return;
+    }
+    const ed = window.cm; ed.replaceSelection(e.name + '()');
+    const c = ed.getCursor();
+    ed.setCursor({ line: c.line, ch: c.ch - 1 });
+    ed.focus();
+  }
+
+  input.addEventListener('input', render);
+  input.addEventListener('keydown', (ev) => {
+    if (ev.key === 'ArrowDown') { ev.preventDefault(); move(1); }
+    else if (ev.key === 'ArrowUp') { ev.preventDefault(); move(-1); }
+    else if (ev.key === 'Enter') { ev.preventDefault(); choose(); }
+    else if (ev.key === 'Escape') { ev.preventDefault(); close(); }
+  });
+  ov.addEventListener('mousedown', (ev) => { if (ev.target === ov) close(); });
+  document.addEventListener('keydown', (ev) => {
+    if ((ev.metaKey || ev.ctrlKey) && !ev.shiftKey && !ev.altKey && ev.key.toLowerCase() === 'k') {
+      ev.preventDefault(); ev.stopPropagation();
+      ov.classList.contains('open') ? close() : open();
+    }
+  }, true);
+  window.openFunctionPalette = open;
+  // refresh the index once the backend function list has loaded
+  const t = setInterval(() => {
+    if (window.__spFn && Object.keys(window.__spFn.docs).length) { build(); clearInterval(t); }
+  }, 500);
+})();
+</script>
+
 </body>
 </html>
