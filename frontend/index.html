@@ -4529,7 +4529,7 @@ function addToCurrentList(indices, varName) {
     const key = `${varName} ${i}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    merged.push({ idx: i, var: varName });
+    merged.push({ idx: i, var: varName, kind: probeKind });
   }
   probeListsByName[name] = merged;
   return merged;
@@ -4702,7 +4702,8 @@ probeMaxFilletToggle.addEventListener('change', updateMaxFilletDisplay);
 // identify the entry uniquely now that a list can hold the same index
 // number from several different shapes (sol1's edge 3 and sol2's edge 3
 // are different entries).
-function removeFromList(name, idx, varName) {
+async function removeFromList(name, idx, varName) {
+  if (!(await guardListChange(name))) return;
   probeListsByName[name] = (probeListsByName[name] || [])
     .filter((e) => !(e.idx === idx && e.var === varName));
   renderProbeList();
@@ -4712,8 +4713,20 @@ function renderProbeList() {
   const name = currentListName();
   const list = currentList();
   probeListDisplay.textContent = '';
+  // Warn when this list name holds edges AND faces (or is being viewed in
+  // the other kind than it was captured in) -- an edge index and a face
+  // index with the same number are unrelated, and Insert writes ONE accessor.
+  const kindsIn = new Set(list.map((e) => e.kind || probeKind));
+  if (kindsIn.size > 1 || (kindsIn.size === 1 && !kindsIn.has(probeKind))) {
+    const w = document.createElement('div');
+    w.className = 'probe-kind-warn';
+    w.style.cssText = 'background:#7a1f1f;color:#fff;padding:4px 6px;margin:0 0 4px;border-radius:4px;font-size:11px;line-height:1.3';
+    const have = Array.from(kindsIn).join(' and ');
+    w.textContent = `⚠ List '${name}' holds ${have}. Edge and face indices are unrelated and Insert writes only .${probeKind}()[...] -- use a different List name (e.g. e2 / f1) for ${probeKind === 'faces' ? 'faces' : 'edges'}.`;
+    probeListDisplay.appendChild(w);
+  }
   if (!list.length) {
-    probeListDisplay.textContent = `${name}: nothing captured yet.`;
+    probeListDisplay.appendChild(document.createTextNode(`${name}: nothing captured yet.`));
   } else {
     const vars = listVars(list);
     const mixed = vars.length > 1;
@@ -4879,6 +4892,60 @@ async function revertListFilletIfLive(name) {
   return true;
 }
 
+// Small in-page OK/Cancel dialog (window.confirm is unreliable inside
+// pywebview) -- resolves true on OK, false on Cancel/Esc.
+function probeConfirm(message) {
+  return new Promise((resolve) => {
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100000;display:flex;align-items:center;justify-content:center';
+    const box = document.createElement('div');
+    box.style.cssText = 'background:#23272e;color:#e6e6e6;border:1px solid #555;border-radius:8px;padding:16px 18px;max-width:420px;font:13px/1.4 system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.5)';
+    const p = document.createElement('div');
+    p.textContent = message;
+    p.style.marginBottom = '12px';
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:8px;justify-content:flex-end';
+    const mk = (t, primary) => {
+      const b = document.createElement('button');
+      b.textContent = t;
+      b.style.cssText = 'padding:5px 14px;border-radius:5px;border:1px solid #666;cursor:pointer;color:#fff;background:' + (primary ? '#3b82f6' : '#3a3f47');
+      return b;
+    };
+    const cancel = mk('Cancel', false), ok = mk('OK', true);
+    const done = (v) => { document.removeEventListener('keydown', onKey, true); ov.remove(); resolve(v); };
+    const onKey = (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); done(false); } else if (ev.key === 'Enter') { ev.stopPropagation(); done(true); } };
+    cancel.addEventListener('click', () => done(false));
+    ok.addEventListener('click', () => done(true));
+    document.addEventListener('keydown', onKey, true);
+    row.append(cancel, ok); box.append(p, row); ov.append(box);
+    document.body.appendChild(ov);
+    ok.focus();
+  });
+}
+
+// Lists whose user already confirmed "yes, change it" since the last
+// Insert / Apply fillet -- so a run of picks only asks once.
+const probeChangeAcked = {};
+
+// Call before a change to a list's picks (add, remove, seam). Clear does NOT ask.
+// If the list is already written into the script (Insert) or has a fillet
+// applied, asks first; on OK, reverts a live fillet (see
+// revertListFilletIfLive) and lets the change proceed. Returns false if
+// the user cancelled.
+async function guardListChange(name) {
+  const filletLive = markedLineIsLive(filletLineMarker(name));
+  const listLive = markedLineIsLive(listLineMarker(name));
+  if ((filletLive || listLive) && !probeChangeAcked[name]) {
+    const msg = filletLive
+      ? `'${name}' already has a fillet applied in the script. Changing the picks will comment out its list and fillet lines and re-render. Continue?`
+      : `'${name}' is already inserted in the script. Changing the picks means you'll need to Insert it again to update the script. Continue?`;
+    if (!(await probeConfirm(msg))) return false;
+    probeChangeAcked[name] = true;
+  }
+  await revertListFilletIfLive(name);
+  return true;
+}
+
 // Writes/updates the captured-list line for the CURRENT list and
 // returns {name, varName, accessor} for callers (the Insert button, and
 // Apply fillet below, which needs the list to exist before it can
@@ -4910,6 +4977,7 @@ function insertListLine() {
     line = `${name} = ${parts.join(' + ')}  ${listLineMarker(name)}`;
   }
   insertOrReplaceMarkedLine(listLineMarker(name), line);
+  probeChangeAcked[name] = false;
   return { name, varName: vars.length === 1 ? vars[0] : null, vars, accessor };
 }
 
@@ -5024,7 +5092,7 @@ async function addManualIndices() {
   // Revert an already-applied fillet on this list first (if any) so the
   // Max fillet radius readout and any future picks are computed against
   // the correct pre-fillet shape -- see revertListFilletIfLive().
-  await revertListFilletIfLive(currentListName());
+  if (!(await guardListChange(currentListName()))) return;
   const before = currentList().length;
   addToCurrentList(nums, varName);
   const added = currentList().length - before;
@@ -5074,7 +5142,7 @@ async function removeManualIndices() {
     return;
   }
   const varName = manualVar.name;
-  await revertListFilletIfLive(currentListName());
+  if (!(await guardListChange(currentListName()))) return;
   const name = currentListName();
   const before = currentList().length;
   const wanted = new Set(nums);
@@ -5196,7 +5264,7 @@ async function findSeamEdges() {
     return;
   }
 
-  await revertListFilletIfLive(currentListName());
+  if (!(await guardListChange(currentListName()))) return;
   probeSeamFindBtn.disabled = true;
   probeSeamLoopsEl.innerHTML = '';
   probeListStatus.textContent = 'Finding the seam…';
@@ -5465,7 +5533,7 @@ renderer.domElement.addEventListener('pointerup', async (e) => {
   // user click twice, showMeshes() has already rebuilt meshGroup
   // (including the edges overlay pickEdge() below reads) by the time
   // renderScene() resolves.
-  await revertListFilletIfLive(currentListName());
+  if (!(await guardListChange(currentListName()))) return;
   const rect = renderer.domElement.getBoundingClientRect();
   const ndc = new THREE.Vector2(
     ((e.clientX - rect.left) / rect.width) * 2 - 1,
